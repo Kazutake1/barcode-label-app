@@ -58,11 +58,22 @@
     <div id="items" class="items"><div class="empty-list">保存した商品がここに並びます。</div></div>
     <div class="print-toolbar">
       <div class="print-settings"><label for="paper">用紙</label><select id="paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦・JIS）</option></select><span id="sheet-hint">A4：2列</span></div>
-      <button type="button" id="print-all" class="button primary print-button">選択したラベルを印刷</button>
+      <button type="button" id="print-all" class="button primary print-button">選択したラベルの印刷プレビュー</button>
     </div>
+    <p id="print-feedback" class="print-feedback" role="status" aria-live="polite" hidden></p>
   </section>
-  <footer><span>商品名は自動取得されません。ブラウザの印刷画面では倍率を100%にし、用紙サイズを合わせてください。</span><span>v1.2 Safari対応版</span></footer>
+  <footer><span>商品名は自動取得されません。ブラウザの印刷画面では倍率を100%にし、用紙サイズを合わせてください。</span><span>v1.3 印刷プレビュー対応版</span></footer>
 </main>
+<div id="print-preview-overlay" class="print-preview-overlay" hidden>
+  <section class="print-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="print-preview-title">
+    <div class="print-preview-heading"><h2 id="print-preview-title">印刷プレビュー</h2><button type="button" id="close-print-preview" class="button ghost">閉じる</button></div>
+    <div class="print-preview-settings"><label for="preview-paper">用紙サイズ</label><select id="preview-paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦）</option></select></div>
+    <p id="print-preview-meta" class="print-preview-meta"></p>
+    <div id="print-preview-pages" class="print-preview-pages"></div>
+    <p id="print-guidance" class="print-guidance"></p>
+    <div class="print-preview-actions"><button type="button" id="confirm-print" class="button primary">印刷画面を開く</button></div>
+  </section>
+</div>
 <div id="print-sheet" class="print-sheet" aria-hidden="true"></div>
 </body>
 </html>
