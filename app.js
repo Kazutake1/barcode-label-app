@@ -211,6 +211,163 @@ function renderCatalog(){
   }
 }
 
+
+const BACKUP_FORMAT = 'barcode-label-app-backup';
+const BACKUP_VERSION = 1;
+const BACKUP_FILE_LIMIT = 2 * 1024 * 1024;
+
+function backupStatus(message,isError=false){
+  const target=$('#backup-status');
+  target.textContent=message;
+  target.hidden=!message;
+  target.className=isError?'backup-status error':'backup-status';
+}
+function makeBackupDocument(){
+  return {
+    format:BACKUP_FORMAT,
+    version:BACKUP_VERSION,
+    exportedAt:new Date().toISOString(),
+    savedProducts:catalog.map(x=>({
+      id:x.id,code:x.code,name:x.name,
+      createdAt:x.createdAt,updatedAt:x.updatedAt
+    })),
+    printList:records.map(x=>({
+      id:x.id,code:x.code,name:x.name,qty:x.qty,selected:x.selected
+    }))
+  };
+}
+async function exportBackup(){
+  if(!catalog.length&&!records.length){
+    backupStatus('保存されている商品・印刷リストがありません。',true);return;
+  }
+  const documentData=makeBackupDocument();
+  const blob=new Blob([JSON.stringify(documentData,null,2)],{type:'application/json'});
+  const localDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('/','-');
+  const filename='barcode-label-backup-'+localDay+'.json';
+  try{
+    // Safari on iPhone/iPad can save the shared file directly to Files.
+    if(typeof File!=='undefined' && navigator.canShare && navigator.share){
+      const file=new File([blob],filename,{type:'application/json'});
+      if(navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({files:[file],title:'バーコードラベル バックアップ'});
+          backupStatus('共有操作を終了しました。「ファイルに保存」などで保存先をご確認ください。');
+        }catch(error){
+          if(error?.name==='AbortError'){backupStatus('バックアップの保存をキャンセルしました。');return;}
+          throw error;
+        }
+        return;
+      }
+    }
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.href=url;link.download=filename;
+    document.body.append(link);
+    link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    backupStatus('JSONファイルの保存を開始しました。ダウンロード先をご確認ください。');
+  }catch(error){
+    backupStatus('バックアップを保存できませんでした。Safariでサイトを開いて再度お試しください。',true);
+  }
+}
+function validateBackupDocument(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)||raw.format!==BACKUP_FORMAT||raw.version!==BACKUP_VERSION){
+    throw Error('このアプリの対応バックアップファイルではありません。');
+  }
+  if(!Array.isArray(raw.savedProducts)||!Array.isArray(raw.printList)){
+    throw Error('ファイルに商品情報または印刷リストがありません。');
+  }
+  if(raw.savedProducts.length>500||raw.printList.length>200){
+    throw Error('ファイル内の商品件数が多すぎます。');
+  }
+  const validName=name=>typeof name==='string'&&name.trim().length>0&&name.length<=80;
+  const validDate=date=>date===null||(typeof date==='string'&&date.length<=64&&!Number.isNaN(Date.parse(date)));
+  const seenCodes=new Set();
+  const products=raw.savedProducts.map((item,index)=>{
+    if(!item||typeof item!=='object'||Array.isArray(item)||typeof item.code!=='string'||!codeInfo(item.code).ok
+       ||!validName(item.name)||!validDate(item.createdAt)||!validDate(item.updatedAt)){
+      throw Error('保存商品'+(index+1)+'件目の形式が正しくありません。');
+    }
+    if(seenCodes.has(item.code))throw Error('バックアップに同じバーコード番号の商品が重複しています。');
+    seenCodes.add(item.code);
+    return {code:item.code,name:item.name,createdAt:item.createdAt,updatedAt:item.updatedAt};
+  });
+  const printItems=raw.printList.map((item,index)=>{
+    if(!item||typeof item!=='object'||Array.isArray(item)||typeof item.code!=='string'||!codeInfo(item.code).ok
+       ||!validName(item.name)||!Number.isInteger(item.qty)||item.qty<1||item.qty>99||typeof item.selected!=='boolean'){
+      throw Error('印刷リスト'+(index+1)+'件目の形式が正しくありません。');
+    }
+    return {code:item.code,name:item.name,qty:item.qty,selected:item.selected};
+  });
+  return {products,printItems};
+}
+function mergeBackup(backup){
+  const catalogCodes=new Set(catalog.map(x=>x.code));
+  const addProducts=[];
+  for(const item of backup.products){
+    if(catalogCodes.has(item.code))continue;
+    catalogCodes.add(item.code);
+    addProducts.push({id:makeId(),...item});
+  }
+  const existingPrint=new Set(records.map(x=>JSON.stringify([x.code,x.name,x.qty])));
+  const addPrint=[];
+  for(const item of backup.printItems){
+    const identity=JSON.stringify([item.code,item.name,item.qty]);
+    if(existingPrint.has(identity))continue;
+    existingPrint.add(identity);
+    addPrint.push({id:makeId(),...item});
+  }
+  if(catalog.length+addProducts.length>500||records.length+addPrint.length>200){
+    throw Error('保存件数の上限を超えるため復元できません。不要な商品を整理してからお試しください。');
+  }
+  if(!addProducts.length&&!addPrint.length)return {saved:0,print:0,skipped:backup.products.length};
+  const nextCatalog=[...catalog,...addProducts];
+  const nextRecords=[...records,...addPrint];
+  const originalCatalog=localStorage.getItem(CATALOG_KEY);
+  const originalRecords=localStorage.getItem(STORE_KEY);
+  try{
+    localStorage.setItem(CATALOG_KEY,JSON.stringify(nextCatalog));
+    localStorage.setItem(STORE_KEY,JSON.stringify(nextRecords));
+  }catch(error){
+    // Roll back both keys to avoid a half-restored backup.
+    try{
+      if(originalCatalog===null)localStorage.removeItem(CATALOG_KEY);
+      else localStorage.setItem(CATALOG_KEY,originalCatalog);
+      if(originalRecords===null)localStorage.removeItem(STORE_KEY);
+      else localStorage.setItem(STORE_KEY,originalRecords);
+    }catch{}
+    throw Error('端末への保存に失敗しました。空き容量をご確認ください。');
+  }
+  catalog=nextCatalog;
+  records=nextRecords;
+  renderCatalog();renderRecords();
+  return {saved:addProducts.length,print:addPrint.length,skipped:backup.products.length-addProducts.length};
+}
+async function restoreBackup(file){
+  if(!file)return;
+  try{
+    if(!file.name?.toLowerCase().endsWith('.json'))throw Error('JSONファイル（.json）を選択してください。');
+    if(file.size>BACKUP_FILE_LIMIT)throw Error('ファイルが大きすぎます（上限2MB）。');
+    const raw=JSON.parse((await file.text()).replace(/^\\uFEFF/,''));
+    const parsed=validateBackupDocument(raw);
+    if(!parsed.products.length&&!parsed.printItems.length){
+      backupStatus('バックアップには商品情報が入っていません。',true);return;
+    }
+    const proposed=parsed.products.filter(x=>!catalog.some(current=>current.code===x.code)).length;
+    const answer=window.confirm(
+      `保存商品：${parsed.products.length}件（うち未登録 ${proposed}件）\\n印刷リスト：${parsed.printItems.length}件\\n\\n既存データを残して追加します。\\n同じバーコード番号の商品は上書きしません。\\n\\n復元しますか？`
+    );
+    if(!answer){backupStatus('復元をキャンセルしました。');return;}
+    const result=mergeBackup(parsed);
+    backupStatus(`復元完了：新規商品${result.saved}件、印刷リスト${result.print}件を追加しました。重複商品${result.skipped}件は変更していません。`);
+    clearForm();
+  }catch(error){
+    backupStatus(error?.message||'バックアップを読み込めませんでした。',true);
+  }finally{
+    $('#backup-file').value='';
+  }
+}
+
 function saveRecords(){try{localStorage.setItem(STORE_KEY,JSON.stringify(records));}catch{toast('端末の保存領域に空きがありません。','error');}}
 function toast(message,type='ok'){
   const target=$('#toast');target.textContent=message;target.className='toast show'+(type==='error'?' error':'');
@@ -447,6 +604,8 @@ window.addEventListener('resize',scalePreviewPages);
 $('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print-preview-overlay')closePrintPreview();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#print-preview-overlay').hidden)closePrintPreview();});
 $('#catalog-search').addEventListener('input',renderCatalog);
+$('#backup-export').addEventListener('click',exportBackup);
+$('#backup-file').addEventListener('change',e=>restoreBackup(e.target.files?.[0]));
 window.addEventListener('hashchange',()=>showPage(window.location.hash==='#saved'?'saved':'create'));
 $('#clear-all').addEventListener('click',()=>{
   if(!records.length)return;

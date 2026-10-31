@@ -74,6 +74,15 @@
     <label for="catalog-search" class="catalog-search-label">保存した商品を検索</label>
     <input id="catalog-search" type="search" autocomplete="off" placeholder="商品名・バーコード番号で検索">
     <div id="catalog-items" class="catalog-items"><div class="empty-list">商品を登録すると、ここに保存されます。</div></div>
+    <section class="backup-section" aria-labelledby="backup-title">
+      <h3 id="backup-title">バックアップ・復元</h3>
+      <div class="backup-actions">
+        <button id="backup-export" type="button" class="button primary">バックアップを保存</button>
+        <label class="button secondary backup-file-label">バックアップから復元<input id="backup-file" type="file" accept=".json,application/json" hidden></label>
+      </div>
+      <p class="backup-description">商品・登録日・印刷リストをJSONファイルに保存します。復元時は既存データを残して追加します。</p>
+      <p id="backup-status" class="backup-status" role="status" aria-live="polite" hidden></p>
+    </section>
   </section>
 </main>
 <div id="print-preview-overlay" class="print-preview-overlay" hidden>
