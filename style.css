@@ -498,3 +498,24 @@ body.print-preview-open{overflow:hidden}
   .print-preview-settings #preview-paper{width:125px}
   .print-preview-settings #preview-label-height{width:95px}
 }
+
+/* v1.24: miniature barcode labels; reduce inner padding at 5/10mm.
+   SVG keeps horizontal barcode modules wide while its vertical height shrinks. */
+.paper-page[data-label-height="5"] .product-label .name-cell{
+  font-size:7pt;line-height:1;padding:.1mm .3mm
+}
+.paper-page[data-label-height="5"] .product-label .barcode-cell{
+  padding:.12mm .35mm
+}
+.paper-page[data-label-height="5"] .product-label svg{
+  width:100%!important;height:3.9mm!important;max-height:100%;max-width:100%
+}
+.paper-page[data-label-height="10"] .product-label .name-cell{
+  font-size:9pt;line-height:1.05;padding:.4mm .65mm
+}
+.paper-page[data-label-height="10"] .product-label .barcode-cell{
+  padding:.2mm .65mm
+}
+.paper-page[data-label-height="10"] .product-label svg{
+  width:100%!important;height:8.5mm!important;max-height:100%;max-width:100%
+}

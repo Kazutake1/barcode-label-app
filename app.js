@@ -72,11 +72,11 @@ function svgElem(name,attrs={}) {
   for (const [key,value] of Object.entries(attrs))element.setAttribute(key,String(value));
   return element;
 }
-function createBarcodeSvg(code) {
+function createBarcodeSvg(code,compact=false) {
   const bits=barcodeBits(code), isSmall=code.length===8;
   const qleft=isSmall?7:11, qright=7;
   const modules=qleft+bits.length+qright;
-  const svg=svgElem('svg',{xmlns:'http://www.w3.org/2000/svg',viewBox:`0 0 ${modules} 54`,width:`${(modules*.33).toFixed(2)}mm`,height:'17.82mm',role:'img','aria-label':`バーコード ${code}`});
+  const svg=svgElem('svg',{xmlns:'http://www.w3.org/2000/svg',viewBox:`0 0 ${modules} 54`,width:`${(modules*.33).toFixed(2)}mm`,height:'17.82mm',...(compact?{'preserveAspectRatio':'none'}:{}),role:'img','aria-label':`バーコード ${code}`});
   svg.append(svgElem('rect',{x:0,y:0,width:modules,height:54,fill:'#ffffff'}));
   let i=0;
   while(i<bits.length){
@@ -91,12 +91,12 @@ function createBarcodeSvg(code) {
   svg.append(text);
   return svg;
 }
-function createLabel({code,name}){
+function createLabel({code,name},compact=false){
   const container=document.createElement('div');container.className='product-label';
   const body=document.createElement('div');body.className='label-body';
   const nameCell=document.createElement('div');nameCell.className='name-cell';nameCell.textContent=name||'商品名';
   const barcodeCell=document.createElement('div');barcodeCell.className='barcode-cell';
-  barcodeCell.append(createBarcodeSvg(code));
+  barcodeCell.append(createBarcodeSvg(code,compact));
   body.append(nameCell,barcodeCell);
 
   container.append(body);
@@ -1056,7 +1056,7 @@ function printFeedback(message){
 }
 function validLabelHeight(value){
   const mm=Number(value);
-  return Number.isInteger(mm)&&mm>=15&&mm<=50&&mm%5===0;
+  return Number.isInteger(mm)&&mm>=5&&mm<=50&&mm%5===0;
 }
 function readLabelHeight(){
   try{
@@ -1098,17 +1098,19 @@ function buildPrintSheets(){
   const preview=$('#print-preview-pages');
   preview.replaceChildren();
   // 3mm gap and the actual paper padding determine how many rows fit.
-  // Cap at the previous 7/8 rows so 20mm keeps the original page layout.
+  // Preserve the original pagination at 15mm and above. Tiny labels (5/10mm)
+  // use additional rows, while always respecting the physical paper dimensions.
   const paperHeight=isB5?257:297, pagePadding=isB5?7:8, gap=3;
   const fitRows=Math.floor((paperHeight-2*pagePadding+gap)/(labelHeightMm+gap));
-  const perPage=2*Math.max(1,Math.min(isB5?7:8,fitRows));
+  const perPage=2*Math.max(1,labelHeightMm<15?fitRows:Math.min(isB5?7:8,fitRows));
   for(let offset=0;offset<flat.length;offset+=perPage){
     const page=document.createElement('div');
     page.className='paper-page'+(isB5?' b5':'');
     page.style.setProperty('--label-height',labelHeightMm+'mm');
+    page.dataset.labelHeight=String(labelHeightMm);
     const grid=document.createElement('div');
     grid.className='paper-label-grid';
-    for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item));
+    for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item,labelHeightMm<=10));
     page.append(grid);
     target.append(page);
 
@@ -1124,7 +1126,9 @@ function buildPrintSheets(){
   $('#print-guidance').textContent=standalone
     ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いてください。プリンターの用紙サイズはアプリと一致させてください。'
     : '「印刷画面を開く」の後、プリンターの用紙サイズを上で選んだサイズに合わせ、倍率を100%にしてください。';
-  if(labelHeightMm===15){
+  if(labelHeightMm<=10){
+    $('#print-guidance').textContent=labelHeightMm+'mmは非常に小さく、商品名やバーコード番号が判読できない、またはスキャンできない可能性があります。必ず実寸で試し刷りし、レジで読み取れることをご確認ください。 '+$('#print-guidance').textContent;
+  }else if(labelHeightMm===15){
     $('#print-guidance').textContent='15mmではバーコードが小さくなり、読み取りにくい場合があります。試し刷りしてご確認ください。 '+$('#print-guidance').textContent;
   }
   if(flat.length>perPage){
