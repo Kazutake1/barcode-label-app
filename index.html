@@ -76,35 +76,54 @@
       <div><h2>保存した商品 <span id="catalog-count" class="count">0件</span></h2>
       </div>
     </div>
-    <section class="folder-manager" aria-labelledby="folders-title">
-      <div class="folder-heading"><h3 id="folders-title">フォルダ</h3><span id="folder-count">0フォルダ</span></div>
-      <div id="folder-grid" class="folder-grid"></div>
-      <form id="folder-create-form" class="folder-create-form">
-        <input id="folder-name" maxlength="30" autocomplete="off" placeholder="新しいフォルダ名" aria-label="新しいフォルダ名" required>
-        <button type="submit" class="button secondary">フォルダを追加</button>
-      </form>
-    </section>
-    <label for="catalog-search" class="catalog-search-label">保存した商品を検索</label>
-    <input id="catalog-search" type="search" autocomplete="off" placeholder="商品名・バーコード・タグで検索">
-    <div class="catalog-controls">
-      <div><label for="catalog-tag-filter">タグで絞り込み</label><select id="catalog-tag-filter"><option value="all">すべてのタグ</option></select></div>
-      <div><label for="catalog-sort">並べ替え</label><select id="catalog-sort">
-        <option value="recent">登録日が新しい順</option>
-        <option value="oldest">登録日が古い順</option>
-        <option value="name">商品名順</option>
-        <option value="code">バーコード順</option>
-      </select></div>
+    <div id="catalog-browser" class="catalog-browser" data-opened="false">
+      <aside id="folder-sidebar" class="folder-sidebar" aria-labelledby="folders-title">
+        <div class="folder-heading">
+          <h3 id="folders-title">フォルダ</h3>
+          <button id="folder-add-trigger" type="button" class="folder-add-trigger">＋ 新規作成</button>
+        </div>
+        <p id="folder-count" class="folder-list-count">0フォルダ</p>
+        <div id="folder-grid" class="folder-grid"></div>
+        <form id="folder-create-form" class="folder-create-form" hidden>
+          <input id="folder-name" maxlength="30" autocomplete="off" placeholder="フォルダ名" aria-label="新しいフォルダ名" required>
+          <div class="folder-form-actions">
+            <button type="submit" class="button primary">作成</button>
+            <button id="folder-add-cancel" type="button" class="button ghost">キャンセル</button>
+          </div>
+        </form>
+      </aside>
+      <section id="catalog-content" class="catalog-content" aria-labelledby="catalog-current-name" data-selecting="false">
+        <div class="catalog-location-header">
+          <button id="catalog-back" type="button" class="catalog-back">‹ フォルダ</button>
+          <div class="catalog-location-title">
+            <h3 id="catalog-current-name">すべての商品</h3>
+            <span id="catalog-current-count">0商品</span>
+          </div>
+          <button id="catalog-select-mode" type="button" class="catalog-select-toggle" aria-pressed="false">選択</button>
+        </div>
+        <label for="catalog-search" class="catalog-search-label">商品を検索</label>
+        <input id="catalog-search" type="search" autocomplete="off" placeholder="商品名・バーコード・タグで検索">
+        <div class="catalog-controls">
+          <div><label for="catalog-tag-filter">タグ</label><select id="catalog-tag-filter"><option value="all">すべてのタグ</option></select></div>
+          <div><label for="catalog-sort">並べ替え</label><select id="catalog-sort">
+            <option value="recent">登録日が新しい順</option>
+            <option value="oldest">登録日が古い順</option>
+            <option value="name">商品名順</option>
+            <option value="code">バーコード順</option>
+          </select></div>
+        </div>
+        <p id="catalog-results" class="catalog-results" role="status" aria-live="polite"></p>
+        <div id="catalog-bulk" class="catalog-bulk" aria-label="商品をまとめて移動" hidden>
+          <span id="bulk-count">0件選択中</span>
+          <button id="bulk-select-visible" type="button" class="button ghost">表示中を選択</button>
+          <button id="bulk-clear" type="button" class="button ghost" disabled>選択解除</button>
+          <label for="bulk-folder-target">移動先</label>
+          <select id="bulk-folder-target"><option value="">未分類</option></select>
+          <button id="bulk-move" type="button" class="button secondary" disabled>まとめて移動</button>
+        </div>
+        <div id="catalog-items" class="catalog-items"><div class="empty-list">商品を登録すると、ここに保存されます。</div></div>
+      </section>
     </div>
-    <p id="catalog-results" class="catalog-results" role="status" aria-live="polite"></p>
-    <div class="catalog-bulk" aria-label="商品をまとめて移動">
-      <span id="bulk-count">0件選択中</span>
-      <button id="bulk-select-visible" type="button" class="button ghost">表示中を選択</button>
-      <button id="bulk-clear" type="button" class="button ghost" disabled>選択解除</button>
-      <label for="bulk-folder-target">移動先</label>
-      <select id="bulk-folder-target"><option value="">未分類</option></select>
-      <button id="bulk-move" type="button" class="button secondary" disabled>まとめて移動</button>
-    </div>
-    <div id="catalog-items" class="catalog-items"><div class="empty-list">商品を登録すると、ここに保存されます。</div></div>
     <section class="backup-section" aria-labelledby="backup-title">
       <h3 id="backup-title">バックアップ・復元</h3>
       <div class="backup-actions">
