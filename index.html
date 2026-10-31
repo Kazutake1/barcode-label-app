@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="バーコードラベル">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg" type="image/png">
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self'; img-src 'self' data: blob:; connect-src 'none'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>バーコードラベル作成</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="app.js" defer></script>
+</head>
+<body>
+<main class="app">
+  <header class="app-header">
+    <div class="brand"><span class="brand-logo" aria-hidden="true">▥</span><div><h1>バーコードラベル</h1><p>商品名とJANコードを一緒に印刷</p></div></div>
+    <span class="local-chip">データはこの端末内に保存</span>
+  </header>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <section class="workspace">
+    <div class="panel entry-panel">
+      <h2>ラベルを作成</h2>
+      <div class="scan-actions">
+        <button type="button" id="start-camera" class="button secondary"><span aria-hidden="true">▣</span> カメラで読み取る</button>
+        <label class="button secondary file-button"><span aria-hidden="true">▤</span> 写真から読み取る<input id="photo-input" type="file" accept="image/*" hidden></label>
+      </div>
+      <div id="scanner" class="scanner" hidden>
+        <video id="camera" playsinline muted autoplay></video>
+        <div class="scan-guide" aria-hidden="true"></div>
+        <div class="scanner-bottom"><span id="camera-status">バーコードを枠内に合わせてください</span><button type="button" id="stop-camera" class="button danger-small">終了</button></div>
+      </div>
+      <form id="editor" novalidate>
+        <label for="code">バーコード下の番号</label>
+        <input id="code" name="code" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="例：4901234567894" maxlength="24" required>
+        <p class="hint" id="code-status">JAN-13（13桁）、JAN-8（8桁）、UPC-A（12桁）に対応</p>
+        <label for="name">商品名</label>
+        <input id="name" name="name" maxlength="80" autocomplete="off" placeholder="例：お茶 600ml" required>
+        <label for="qty">印刷枚数</label>
+        <div class="qty-row"><button id="minus" type="button" class="qty-button" aria-label="印刷枚数を1減らす">−</button><input id="qty" name="qty" type="number" inputmode="numeric" min="1" max="99" value="1" required><button id="plus" type="button" class="qty-button" aria-label="印刷枚数を1増やす">＋</button></div>
+        <div class="form-actions"><button type="submit" id="save" class="button primary">リストに追加</button><button type="button" id="reset" class="button ghost">入力をクリア</button></div>
+      </form>
+    </div>
+    <div class="panel preview-panel">
+      <div class="preview-header"><h2>ラベルのプレビュー</h2><span>印刷時は黒・白で出力</span></div>
+      <div class="preview-stage" id="preview"><div class="preview-empty">番号を入力すると<br>バーコードを表示します</div></div>
+      <div class="preview-note">チェックデジットが正しい番号だけを生成します。<br>元の商品に付いているバーコードを複製する用途を想定しています。</div>
+      <button type="button" id="print-one" class="button outline full">このラベルを印刷</button>
+    </div>
+  </section>
+  <section class="panel items-panel">
+    <div class="items-header"><div><h2>印刷リスト <span id="item-count" class="count">0件</span></h2><p>印刷する商品にチェックを入れてください。</p></div><button type="button" id="clear-all" class="button quiet-small">すべて削除</button></div>
+    <div id="items" class="items"><div class="empty-list">保存した商品がここに並びます。</div></div>
+    <div class="print-toolbar">
+      <div class="print-settings"><label for="paper">用紙</label><select id="paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦・JIS）</option></select><span id="sheet-hint">A4：2列</span></div>
+      <button type="button" id="print-all" class="button primary print-button">選択したラベルを印刷</button>
+    </div>
+  </section>
+  <footer><span>商品名は自動取得されません。ブラウザの印刷画面では倍率を100%にし、用紙サイズを合わせてください。</span><span>v1.2 Safari対応版</span></footer>
+</main>
+<div id="print-sheet" class="print-sheet" aria-hidden="true"></div>
+</body>
+</html>
