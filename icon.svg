@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="バーコードラベル">
+<rect width="512" height="512" fill="#111827" rx="98"/>
+<rect x="78" y="116" width="356" height="280" rx="25" fill="#fff"/>
+<g fill="#111827">
+<path d="M113 161h11v151h-11zm21 0h9v151h-9zm21 0h19v151h-19zm29 0h8v151h-8zm18 0h17v151h-17zm28 0h8v151h-8zm19 0h12v151h-12zm23 0h7v151h-7zm18 0h19v151h-19zm30 0h8v151h-8zm18 0h15v151h-15zm25 0h8v151h-8z"/>
+</g>
+<text x="256" y="360" fill="#111827" font-size="25" font-family="Arial,sans-serif" text-anchor="middle" font-weight="700">BARCODE</text>
+</svg>
