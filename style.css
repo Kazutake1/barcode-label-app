@@ -105,13 +105,13 @@ body.print-preview-open{overflow:hidden}
    The on-screen representation is a scaled clone, never a reflowed approximation. */
 .paper-page{box-sizing:border-box;display:block;position:relative;overflow:hidden;width:210mm;height:297mm;padding:8mm;background:#fff;color:#000;box-shadow:0 5px 18px #0002}
 .paper-page.b5{width:182mm;height:257mm;padding:7mm}
-.paper-label-grid{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:25mm;gap:3mm;align-content:start}
-.paper-page.b5 .paper-label-grid{grid-auto-rows:25mm}
+.paper-label-grid{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:20mm;gap:3mm;align-content:start}
+.paper-page.b5 .paper-label-grid{grid-auto-rows:20mm}
 .paper-page .product-label{width:100%;max-width:none;min-width:0;min-height:0;height:100%;margin:0;border:.35mm solid #111;border-radius:0;padding:0;box-shadow:none;display:grid;grid-template-rows:minmax(0,1fr);overflow:hidden}
 .paper-page .product-label .label-body{height:100%;min-height:0;grid-template-columns:46% 54%;overflow:hidden}
 .paper-page .product-label .name-cell{font-size:13pt;line-height:1.2;padding:1mm 1.5mm;border-right:.35mm solid #111}
 .paper-page .product-label .barcode-cell{padding:0.4mm 1.3mm;overflow:hidden}
-.paper-page .product-label svg{width:auto!important;height:22.44mm!important;max-width:100%;max-height:100%;display:block}
+.paper-page .product-label svg{width:auto!important;height:17.82mm!important;max-width:100%;max-height:100%;display:block}
 .preview-page-viewport{width:100%;height:0;position:relative;overflow:hidden}
 .preview-page-viewport .paper-page{position:absolute;top:0;left:0;transform-origin:top left}
 @media print{
