@@ -309,3 +309,63 @@ body.print-preview-open{overflow:hidden}
 .folder-glyph::before{content:"";position:absolute;left:7px;top:13px;width:25px;height:17px;border-radius:3px;background:#397edc}
 .folder-glyph::after{content:"";position:absolute;left:7px;top:9px;width:13px;height:8px;border-radius:3px 3px 0 0;background:#397edc}
 .folder-form-actions{width:100%}
+
+/* v1.15: compact two-column folder cards on iPhone, iPad and Mac. */
+.folder-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+  overflow:visible
+}
+.folder-list-item{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:116px;
+  position:relative;
+  border:1px solid #e0e8f2;
+  border-radius:12px;
+  background:#f9fbfe
+}
+.folder-open{
+  width:100%;
+  min-height:114px;
+  padding:10px 10px 11px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:flex-start;
+  gap:8px;
+  border-radius:11px
+}
+.folder-open[aria-pressed="true"]{
+  background:#eaf3ff;
+  box-shadow:inset 0 0 0 2px #1769d4
+}
+.folder-glyph{width:32px;height:32px;border-radius:8px}
+.folder-glyph::before{left:5px;top:11px;width:22px;height:15px}
+.folder-glyph::after{left:5px;top:8px;width:12px;height:7px}
+.folder-info{flex:1;width:100%;gap:4px}
+.folder-name{
+  font-size:13px;
+  line-height:1.35;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden
+}
+.folder-count{font-size:11px}
+.folder-chevron{display:none}
+.folder-menu{
+  position:absolute;
+  top:7px;
+  right:6px;
+  align-self:auto;
+  z-index:2
+}
+.folder-menu[open]{z-index:15}
+@media(min-width:820px){
+  .catalog-browser{grid-template-columns:minmax(285px,35%) minmax(0,1fr)}
+}
