@@ -3,6 +3,7 @@
 const STORE_KEY = 'barcode-label-local-v1';
 const CATALOG_KEY = 'barcode-label-catalog-v1';
 const FOLDERS_KEY = 'barcode-label-folders-v1';
+const LABEL_HEIGHT_KEY = 'barcode-label-print-height-mm-v1';
 const MAX_FOLDERS = 50;
 const MAX_FOLDER_NAME = 30;
 const MAX_PRODUCT_TAGS=8;
@@ -34,6 +35,7 @@ let reader = null;
 let decoderLoading = null;
 let toastTimer = null;
 let stagedPrintItems = [];
+let labelHeightMm = readLabelHeight();
 
 function normalizeCode(value) {
   const translated = String(value).replace(/[０-９]/g, ch=>String(ch.charCodeAt(0)-0xff10));
@@ -1052,6 +1054,25 @@ function printFeedback(message){
   box.hidden=!message;
   if(message)box.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+function validLabelHeight(value){
+  const mm=Number(value);
+  return Number.isInteger(mm)&&mm>=15&&mm<=50&&mm%5===0;
+}
+function readLabelHeight(){
+  try{
+    const raw=localStorage.getItem(LABEL_HEIGHT_KEY);
+    return raw!==null&&validLabelHeight(raw)?Number(raw):20;
+  }catch{return 20;}
+}
+function setLabelHeight(value){
+  if(!validLabelHeight(value))return;
+  labelHeightMm=Number(value);
+  $('#label-height').value=String(labelHeightMm);
+  $('#preview-label-height').value=String(labelHeightMm);
+  try{localStorage.setItem(LABEL_HEIGHT_KEY,String(labelHeightMm));}
+  catch{toast('ラベルの高さを記憶できませんでした。今回の印刷には反映されます。','error');}
+  if(!$('#print-preview-overlay').hidden&&stagedPrintItems.length)buildPrintSheets();
+}
 function printLabels(items){
   const total=items.reduce((sum,item)=>sum+item.qty,0);
   if(!total){printFeedback('印刷する商品がありません。「リストに追加」を押して保存し、印刷する商品にチェックを入れてください。');return;}
@@ -1076,10 +1097,15 @@ function buildPrintSheets(){
   target.className='print-sheet '+(isB5?'b5':'a4');
   const preview=$('#print-preview-pages');
   preview.replaceChildren();
-  const perPage=isB5?14:16;
+  // 3mm gap and the actual paper padding determine how many rows fit.
+  // Cap at the previous 7/8 rows so 20mm keeps the original page layout.
+  const paperHeight=isB5?257:297, pagePadding=isB5?7:8, gap=3;
+  const fitRows=Math.floor((paperHeight-2*pagePadding+gap)/(labelHeightMm+gap));
+  const perPage=2*Math.max(1,Math.min(isB5?7:8,fitRows));
   for(let offset=0;offset<flat.length;offset+=perPage){
     const page=document.createElement('div');
     page.className='paper-page'+(isB5?' b5':'');
+    page.style.setProperty('--label-height',labelHeightMm+'mm');
     const grid=document.createElement('div');
     grid.className='paper-label-grid';
     for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item));
@@ -1092,11 +1118,15 @@ function buildPrintSheets(){
     preview.append(viewport);
   }
   $('#preview-paper').value=paper;
-  $('#print-preview-meta').textContent=`${paper}・縦向き・2列 / ${stagedPrintItems.length}商品・合計${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
+  $('#preview-label-height').value=String(labelHeightMm);
+  $('#print-preview-meta').textContent=`${paper}・縦向き・2列・ラベルの高さ${labelHeightMm}mm / ${stagedPrintItems.length}商品・合計${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
   const standalone=window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
   $('#print-guidance').textContent=standalone
     ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いてください。プリンターの用紙サイズはアプリと一致させてください。'
     : '「印刷画面を開く」の後、プリンターの用紙サイズを上で選んだサイズに合わせ、倍率を100%にしてください。';
+  if(labelHeightMm===15){
+    $('#print-guidance').textContent='15mmではバーコードが小さくなり、読み取りにくい場合があります。試し刷りしてご確認ください。 '+$('#print-guidance').textContent;
+  }
   if(flat.length>perPage){
     $('#print-guidance').textContent=`印刷枚数の合計が${flat.length}枚のため${Math.ceil(flat.length/perPage)}ページになります。1ページに収めたい場合は、各商品の「印刷枚数」を減らしてください。`+' '+$('#print-guidance').textContent;
   }
@@ -1227,6 +1257,8 @@ $('#print-all').addEventListener('click',()=>printLabels(records.filter(r=>r.sel
 $('#close-print-preview').addEventListener('click',closePrintPreview);
 $('#confirm-print').addEventListener('click',confirmPrint);
 $('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.value;buildPrintSheets();});
+$('#label-height').addEventListener('change',e=>setLabelHeight(e.target.value));
+$('#preview-label-height').addEventListener('change',e=>setLabelHeight(e.target.value));
 window.addEventListener('resize',scalePreviewPages);
 $('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print-preview-overlay')closePrintPreview();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#print-preview-overlay').hidden)closePrintPreview();});
@@ -1292,4 +1324,6 @@ $('#photo-input').addEventListener('change',e=>scanPhoto(e.target.files?.[0]));
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCamera();});
 window.addEventListener('pagehide',stopCamera);
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+$('#label-height').value=String(labelHeightMm);
+$('#preview-label-height').value=String(labelHeightMm);
 migrateOldProducts();renderRecords();renderCatalog();updatePreview();showPage(window.location.hash==='#saved'?'saved':'create');
