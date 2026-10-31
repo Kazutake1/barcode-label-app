@@ -272,24 +272,38 @@ function renderFolders(){
     view.addEventListener('click',()=>openCatalogFolder(folder.id));
     item.append(view);
     if(folder.id!=='all'&&folder.id!=='none'){
-      const menu=document.createElement('details');menu.className='folder-menu';
-      const trigger=document.createElement('summary');trigger.textContent='…';
-      trigger.setAttribute('aria-label',folder.name+'の管理メニュー');
-      const options=document.createElement('div');options.className='folder-menu-options';
-      const rename=document.createElement('button');rename.type='button';rename.textContent='名前を変更';
-      rename.addEventListener('click',()=>{
-        menu.open=false;
-        const next=window.prompt('フォルダ名を変更',folder.name);
+      const controls=document.createElement('div');
+      controls.className='folder-card-controls';
+      const edit=document.createElement('button');
+      edit.type='button';
+      edit.className='folder-card-edit';
+      edit.textContent='編集';
+      edit.setAttribute('aria-label',folder.name+'の名前を編集');
+      edit.addEventListener('click',()=>{
+        const next=window.prompt('フォルダ名を編集',folder.name);
         if(next===null)return;
-        try{renameFolder(folder.id,next);}catch(err){toast(err.message,'error');}
+        try{
+          renameFolder(folder.id,next);
+          toast('フォルダ名を変更しました。');
+        }catch(error){toast(error.message,'error');}
       });
-      const del=document.createElement('button');del.type='button';del.textContent='フォルダを削除';del.className='destructive';
+      const del=document.createElement('button');
+      del.type='button';
+      del.className='folder-card-delete';
+      del.textContent='削除';
+      del.setAttribute('aria-label',folder.name+'を削除');
       del.addEventListener('click',()=>{
-        menu.open=false;
-        try{if(deleteFolder(folder.id)){catalogSelectionMode=false;selectedCatalogIds.clear();renderCatalog();}}
-        catch(err){toast(err.message,'error');}
+        try{
+          if(deleteFolder(folder.id)){
+            catalogSelectionMode=false;
+            selectedCatalogIds.clear();
+            renderCatalog();
+            toast('フォルダを削除しました。中の商品は未分類に移動しました。');
+          }
+        }catch(error){toast(error.message,'error');}
       });
-      options.append(rename,del);menu.append(trigger,options);item.append(menu);
+      controls.append(edit,del);
+      item.append(controls);
     }
     list.append(item);
   }

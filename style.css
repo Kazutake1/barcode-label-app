@@ -369,3 +369,35 @@ body.print-preview-open{overflow:hidden}
 @media(min-width:820px){
   .catalog-browser{grid-template-columns:minmax(285px,35%) minmax(0,1fr)}
 }
+
+/* v1.16: directly visible folder edit/delete actions on two-column cards. */
+.folder-list-item{min-height:0;overflow:visible}
+.folder-open{min-height:103px;padding:10px 10px 8px}
+.folder-card-controls{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border-top:1px solid #e2e9f2;
+  min-width:0;
+}
+.folder-card-controls button{
+  min-width:0;
+  min-height:40px;
+  padding:8px 5px;
+  border:0;
+  background:transparent;
+  color:#315f9f;
+  font-size:12px;
+  font-weight:650;
+  cursor:pointer;
+  border-radius:0 0 0 11px;
+}
+.folder-card-controls button+button{
+  border-left:1px solid #e2e9f2;
+  border-radius:0 0 11px 0;
+}
+.folder-card-controls .folder-card-delete{color:#ab3939}
+.folder-card-controls button:focus-visible{outline:2px solid #1769d4;outline-offset:-2px}
+@media(hover:hover){
+  .folder-card-controls button:hover{background:#eaf3ff}
+  .folder-card-controls .folder-card-delete:hover{background:#fff0f0}
+}
