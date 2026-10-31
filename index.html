@@ -107,6 +107,7 @@
         <div class="catalog-controls">
           <div><label for="catalog-tag-filter">タグ</label><select id="catalog-tag-filter"><option value="all">すべてのタグ</option></select></div>
           <div><label for="catalog-sort">並べ替え</label><select id="catalog-sort">
+            <option value="manual">手動順</option>
             <option value="recent">登録日が新しい順</option>
             <option value="oldest">登録日が古い順</option>
             <option value="name">商品名順</option>
@@ -114,6 +115,7 @@
           </select></div>
         </div>
         <p id="catalog-results" class="catalog-results" role="status" aria-live="polite"></p>
+        <p id="product-sort-help" class="product-sort-help" role="status" aria-live="polite">商品を長押しして並べ替えできます。</p>
         <div id="catalog-bulk" class="catalog-bulk" aria-label="商品をまとめて移動" hidden>
           <span id="bulk-count">0件選択中</span>
           <button id="bulk-select-visible" type="button" class="button ghost">表示中を選択</button>
