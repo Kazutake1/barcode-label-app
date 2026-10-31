@@ -447,3 +447,8 @@ body.print-preview-open{overflow:hidden}
   margin-top:auto;
   gap:3px;
 }
+
+/* v1.20: 150 percent larger folder icons. */
+.folder-glyph{width:48px;height:48px}
+.folder-glyph::before{left:7.5px;top:16.5px;width:33px;height:22.5px}
+.folder-glyph::after{left:7.5px;top:12px;width:18px;height:10.5px}
