@@ -76,8 +76,8 @@ function createBarcodeSvg(code,compact=false) {
   const bits=barcodeBits(code), isSmall=code.length===8;
   const qleft=isSmall?7:11, qright=7;
   const modules=qleft+bits.length+qright;
-  const svg=svgElem('svg',{xmlns:'http://www.w3.org/2000/svg',viewBox:`0 0 ${modules} 54`,width:`${(modules*.33).toFixed(2)}mm`,height:'17.82mm',...(compact?{'preserveAspectRatio':'none'}:{}),role:'img','aria-label':`バーコード ${code}`});
-  svg.append(svgElem('rect',{x:0,y:0,width:modules,height:54,fill:'#ffffff'}));
+  const svg=svgElem('svg',{xmlns:'http://www.w3.org/2000/svg',viewBox:`0 0 ${modules} ${compact?44:54}`,width:`${(modules*.33).toFixed(2)}mm`,height:'17.82mm',...(compact?{'preserveAspectRatio':'none'}:{}),role:'img','aria-label':`バーコード ${code}`});
+  svg.append(svgElem('rect',{x:0,y:0,width:modules,height:compact?44:54,fill:'#ffffff'}));
   let i=0;
   while(i<bits.length){
     if(bits[i]==='0'){i++;continue;}
@@ -86,9 +86,11 @@ function createBarcodeSvg(code,compact=false) {
     const guard=(start<3)||(start>=bits.length-3)||(start>=((bits.length-5)/2)&&start<((bits.length+5)/2));
     svg.append(svgElem('rect',{x:qleft+start,y:0,width:i-start,height:guard?44:40,fill:'#000000'}));
   }
-  const text=svgElem('text',{x:modules/2,y:52.1,'text-anchor':'middle','font-size':'8.3','font-family':'Arial, sans-serif','font-weight':'500',fill:'#000000','letter-spacing':'.45'});
-  text.textContent=code;
-  svg.append(text);
+  if(!compact){
+    const text=svgElem('text',{x:modules/2,y:52.1,'text-anchor':'middle','font-size':'8.3','font-family':'Arial, sans-serif','font-weight':'500',fill:'#000000','letter-spacing':'.45'});
+    text.textContent=code;
+    svg.append(text);
+  }
   return svg;
 }
 function createLabel({code,name},compact=false){
@@ -1127,7 +1129,7 @@ function buildPrintSheets(){
     ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いてください。プリンターの用紙サイズはアプリと一致させてください。'
     : '「印刷画面を開く」の後、プリンターの用紙サイズを上で選んだサイズに合わせ、倍率を100%にしてください。';
   if(labelHeightMm<=10){
-    $('#print-guidance').textContent=labelHeightMm+'mmは非常に小さく、商品名やバーコード番号が判読できない、またはスキャンできない可能性があります。必ず実寸で試し刷りし、レジで読み取れることをご確認ください。 '+$('#print-guidance').textContent;
+    $('#print-guidance').textContent=labelHeightMm+'mmはバーコード下の数字を省略しています。商品名が読みにくくなる、またはバーコードがスキャンできない可能性があります。必ず実寸で試し刷りし、レジで読み取れることをご確認ください。 '+$('#print-guidance').textContent;
   }else if(labelHeightMm===15){
     $('#print-guidance').textContent='15mmではバーコードが小さくなり、読み取りにくい場合があります。試し刷りしてご確認ください。 '+$('#print-guidance').textContent;
   }
