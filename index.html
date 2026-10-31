@@ -48,6 +48,8 @@
         <label for="tags">タグ（任意・最大8個）</label>
         <input id="tags" name="tags" maxlength="180" autocomplete="off" placeholder="例：飲料、店舗A">
         <p class="tag-hint">「、」またはカンマで区切ります。1つ20文字以内。</p>
+        <label for="folder-select">保存先フォルダ</label>
+        <select id="folder-select" name="folder"><option value="">未分類</option></select>
         <label for="qty">印刷枚数</label>
         <div class="qty-row"><button id="minus" type="button" class="qty-button" aria-label="印刷枚数を1減らす">−</button><input id="qty" name="qty" type="number" inputmode="numeric" min="1" max="99" value="1" required><button id="plus" type="button" class="qty-button" aria-label="印刷枚数を1増やす">＋</button></div>
         <div class="form-actions"><button type="submit" id="save" class="button primary">保存して印刷リストに追加</button><button type="button" id="reset" class="button ghost">入力をクリア</button></div>
@@ -74,6 +76,14 @@
       <div><h2>保存した商品 <span id="catalog-count" class="count">0件</span></h2>
       </div>
     </div>
+    <section class="folder-manager" aria-labelledby="folders-title">
+      <div class="folder-heading"><h3 id="folders-title">フォルダ</h3><span id="folder-count">0フォルダ</span></div>
+      <div id="folder-grid" class="folder-grid"></div>
+      <form id="folder-create-form" class="folder-create-form">
+        <input id="folder-name" maxlength="30" autocomplete="off" placeholder="新しいフォルダ名" aria-label="新しいフォルダ名" required>
+        <button type="submit" class="button secondary">フォルダを追加</button>
+      </form>
+    </section>
     <label for="catalog-search" class="catalog-search-label">保存した商品を検索</label>
     <input id="catalog-search" type="search" autocomplete="off" placeholder="商品名・バーコード・タグで検索">
     <div class="catalog-controls">
@@ -86,6 +96,14 @@
       </select></div>
     </div>
     <p id="catalog-results" class="catalog-results" role="status" aria-live="polite"></p>
+    <div class="catalog-bulk" aria-label="商品をまとめて移動">
+      <span id="bulk-count">0件選択中</span>
+      <button id="bulk-select-visible" type="button" class="button ghost">表示中を選択</button>
+      <button id="bulk-clear" type="button" class="button ghost" disabled>選択解除</button>
+      <label for="bulk-folder-target">移動先</label>
+      <select id="bulk-folder-target"><option value="">未分類</option></select>
+      <button id="bulk-move" type="button" class="button secondary" disabled>まとめて移動</button>
+    </div>
     <div id="catalog-items" class="catalog-items"><div class="empty-list">商品を登録すると、ここに保存されます。</div></div>
     <section class="backup-section" aria-labelledby="backup-title">
       <h3 id="backup-title">バックアップ・復元</h3>
@@ -93,7 +111,7 @@
         <button id="backup-export" type="button" class="button primary">バックアップを保存</button>
         <label class="button secondary backup-file-label">バックアップから復元<input id="backup-file" type="file" accept=".json,application/json" hidden></label>
       </div>
-      <p class="backup-description">商品・タグ・登録日・印刷リストをJSONファイルに保存します。復元時は既存データを残して追加します。</p>
+      <p class="backup-description">商品・フォルダ・タグ・登録日・印刷リストをJSONファイルに保存します。復元時は既存データを残して追加します。</p>
       <p id="backup-status" class="backup-status" role="status" aria-live="polite" hidden></p>
     </section>
   </section>
