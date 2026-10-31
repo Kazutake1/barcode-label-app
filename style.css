@@ -452,3 +452,26 @@ body.print-preview-open{overflow:hidden}
 .folder-glyph{width:48px;height:48px}
 .folder-glyph::before{left:7.5px;top:16.5px;width:33px;height:22.5px}
 .folder-glyph::after{left:7.5px;top:12px;width:18px;height:10.5px}
+
+/* v1.21: touch-and-hold drag to reorder user folders; built-ins are fixed. */
+.folder-sort-help{font-size:11px;line-height:1.5;color:#6a7b90;margin:2px 0 9px}
+.folder-open{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.folder-list-item.folder-is-dragging{opacity:.48;border-style:dashed}
+.folder-list-item.folder-drop-target{
+  border-color:#1769d4;
+  box-shadow:0 0 0 2px #1769d4;
+  background:#edf5ff
+}
+.folder-drag-ghost{
+  position:fixed!important;
+  z-index:9999!important;
+  pointer-events:none!important;
+  margin:0!important;
+  background:#fff!important;
+  opacity:.92;
+  box-shadow:0 12px 32px #172e5470;
+  transform-origin:top left;
+  will-change:transform
+}
+.folder-sort-active{cursor:grabbing}
+@media print{.folder-drag-ghost,.folder-sort-help{display:none!important}}

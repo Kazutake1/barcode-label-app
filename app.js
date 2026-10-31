@@ -21,6 +21,9 @@ let catalogFolderOpened = false;
 let catalogSelectionMode = false;
 let selectedCatalogIds = new Set();
 let visibleCatalogIds = [];
+let folderGesture = null;
+let folderSuppressClickUntil = 0;
+let folderIgnoreMouseUntil = 0;
 let editingCatalogId = null;
 let editingId = null;
 let scanControls = null;
@@ -240,6 +243,127 @@ function renderFolderOptions(select,includeAll=false){
   }
   select.value=[...select.options].some(x=>x.value===current)?current:(includeAll?'all':'');
 }
+
+/* Folder order: touch-and-hold or mouse hold, leaving the two built-in folders fixed. */
+function reorderFolder(sourceId,targetId){
+  const from=folders.findIndex(x=>x.id===sourceId);
+  const to=folders.findIndex(x=>x.id===targetId);
+  if(from<0||to<0||from===to)return false;
+  const next=[...folders];
+  const [moved]=next.splice(from,1);
+  next.splice(to,0,moved);
+  persistFolders(next);
+  return true;
+}
+function clearFolderGesture(){
+  const gesture=folderGesture;
+  if(!gesture)return;
+  clearTimeout(gesture.timer);
+  gesture.source.classList.remove('folder-is-dragging');
+  const grid=$('#folder-grid');
+  grid.classList.remove('folder-sort-active');
+  for(const card of grid.querySelectorAll('.folder-drop-target'))card.classList.remove('folder-drop-target');
+  gesture.ghost?.remove();
+  folderGesture=null;
+  $('#folder-sort-help').textContent='フォルダを長押しして並べ替えできます。';
+}
+function beginFolderDragging(){
+  const gesture=folderGesture;
+  if(!gesture||!folders.some(f=>f.id===gesture.id))return;
+  gesture.dragging=true;
+  folderSuppressClickUntil=Date.now()+800;
+  gesture.source.classList.add('folder-is-dragging');
+  $('#folder-grid').classList.add('folder-sort-active');
+  const bounds=gesture.source.getBoundingClientRect();
+  const ghost=gesture.source.cloneNode(true);
+  ghost.classList.add('folder-drag-ghost');
+  ghost.setAttribute('aria-hidden','true');
+  ghost.style.left=bounds.left+'px';
+  ghost.style.top=bounds.top+'px';
+  ghost.style.width=bounds.width+'px';
+  ghost.style.height=bounds.height+'px';
+  ghost.style.transform='translate(0px, 0px)';
+  document.body.append(ghost);
+  gesture.ghost=ghost;
+  $('#folder-sort-help').textContent='移動先へドラッグして指を離してください。';
+}
+function startFolderPress(event,kind){
+  if(folderGesture)return;
+  if(kind==='mouse'&&(event.button!==0||Date.now()<folderIgnoreMouseUntil))return;
+  const view=event.target.closest('.folder-open');
+  if(!view||!$('#folder-grid').contains(view))return;
+  const id=view.dataset.folderId;
+  if(!folders.some(f=>f.id===id))return;
+  const touch=kind==='touch'?event.touches.length===1?event.touches[0]:null:null;
+  if(kind==='touch'&&!touch)return;
+  const startX=kind==='touch'?touch.clientX:event.clientX;
+  const startY=kind==='touch'?touch.clientY:event.clientY;
+  if(kind==='touch')folderIgnoreMouseUntil=Date.now()+900;
+  const gesture={
+    id,kind,identifier:touch?.identifier,startX,startX,startX0:startX,startY,
+    x:startX,y:startY,source:view.parentElement,dragging:false,dropId:null,
+    ghost:null,timer:null
+  };
+  gesture.timer=setTimeout(beginFolderDragging,480);
+  folderGesture=gesture;
+}
+function moveFolderPress(event,kind){
+  const gesture=folderGesture;
+  if(!gesture||gesture.kind!==kind)return;
+  const touch=kind==='touch'?[...event.touches].find(t=>t.identifier===gesture.identifier):null;
+  if(kind==='touch'&&!touch){clearFolderGesture();return;}
+  const x=kind==='touch'?touch.clientX:event.clientX;
+  const y=kind==='touch'?touch.clientY:event.clientY;
+  gesture.x=x;gesture.y=y;
+  if(!gesture.dragging){
+    if(Math.hypot(x-gesture.startX,y-gesture.startY)>12)clearFolderGesture();
+    return;
+  }
+  if(event.cancelable)event.preventDefault();
+  gesture.ghost.style.transform='translate('+(x-gesture.startX)+'px,'+(y-gesture.startY)+'px)';
+  const atPoint=document.elementFromPoint(x,y);
+  const card=atPoint?.closest('.folder-list-item');
+  const target=card?.dataset.folderId;
+  const nextId=target!==gesture.id&&folders.some(f=>f.id===target)?target:null;
+  if(nextId===gesture.dropId)return;
+  for(const el of $('#folder-grid').querySelectorAll('.folder-drop-target'))el.classList.remove('folder-drop-target');
+  if(nextId)card.classList.add('folder-drop-target');
+  gesture.dropId=nextId;
+}
+function endFolderPress(event,kind,commit=true){
+  const gesture=folderGesture;
+  if(!gesture||gesture.kind!==kind)return;
+  if(kind==='touch'&&event.changedTouches&&![...event.changedTouches].some(t=>t.identifier===gesture.identifier))return;
+  const wasDragging=gesture.dragging;
+  const source=gesture.id,target=gesture.dropId;
+  if(wasDragging){
+    if(event.cancelable)event.preventDefault();
+    folderSuppressClickUntil=Date.now()+600;
+  }
+  clearFolderGesture();
+  if(!wasDragging||!commit||!target)return;
+  try{
+    if(reorderFolder(source,target))toast('フォルダの順番を保存しました。');
+  }catch(error){toast(error.message,'error');}
+}
+function installFolderReordering(){
+  const grid=$('#folder-grid');
+  grid.addEventListener('touchstart',event=>startFolderPress(event,'touch'),{passive:true});
+  document.addEventListener('touchmove',event=>moveFolderPress(event,'touch'),{passive:false});
+  document.addEventListener('touchend',event=>endFolderPress(event,'touch'),{passive:false});
+  document.addEventListener('touchcancel',event=>endFolderPress(event,'touch',false));
+  grid.addEventListener('mousedown',event=>startFolderPress(event,'mouse'));
+  document.addEventListener('mousemove',event=>moveFolderPress(event,'mouse'));
+  document.addEventListener('mouseup',event=>endFolderPress(event,'mouse'));
+  window.addEventListener('blur',clearFolderGesture);
+  grid.addEventListener('contextmenu',event=>{
+    if(event.target.closest('.folder-open')?.dataset.folderId
+      &&folders.some(f=>f.id===event.target.closest('.folder-open').dataset.folderId)){
+      event.preventDefault();
+    }
+  });
+}
+
 function openCatalogFolder(folderId){
   activeFolder=folderId;
   catalogFolderOpened=true;
@@ -259,7 +383,9 @@ function renderFolders(){
     ...folders.map(f=>({...f,count:catalog.filter(p=>p.folderId===f.id).length}))];
   for(const folder of items){
     const item=document.createElement('div');item.className='folder-list-item';
+    item.dataset.folderId=folder.id;
     const view=document.createElement('button');view.type='button';view.className='folder-open';
+    view.dataset.folderId=folder.id;
     view.setAttribute('aria-pressed',String(activeFolder===folder.id));
     const glyph=document.createElement('span');glyph.className='folder-glyph';glyph.setAttribute('aria-hidden','true');
     glyph.textContent=folder.id==='all'?'▤':folder.id==='none'?'▢':'▣';
@@ -269,7 +395,29 @@ function renderFolders(){
     data.append(name,qty);
     const arrow=document.createElement('span');arrow.className='folder-chevron';arrow.textContent='›';arrow.setAttribute('aria-hidden','true');
     view.append(glyph,data,arrow);
-    view.addEventListener('click',()=>openCatalogFolder(folder.id));
+    if(folder.id!=='all'&&folder.id!=='none'){
+      view.setAttribute('aria-describedby','folder-sort-help');
+      view.addEventListener('keydown',event=>{
+        if(!event.altKey||!['ArrowLeft','ArrowUp','ArrowRight','ArrowDown'].includes(event.key))return;
+        event.preventDefault();
+        const index=folders.findIndex(f=>f.id===folder.id);
+        const step=event.key==='ArrowLeft'||event.key==='ArrowUp'?-1:1;
+        const target=folders[index+step];
+        if(!target)return;
+        try{
+          if(reorderFolder(folder.id,target.id)){
+            const focused=[...$('#folder-grid').querySelectorAll('.folder-open')]
+              .find(button=>button.dataset.folderId===folder.id);
+            focused?.focus();
+            toast('フォルダの順番を保存しました。');
+          }
+        }catch(error){toast(error.message,'error');}
+      });
+    }
+    view.addEventListener('click',event=>{
+      if(Date.now()<folderSuppressClickUntil){event.preventDefault();return;}
+      openCatalogFolder(folder.id);
+    });
     item.append(view);
     if(folder.id!=='all'&&folder.id!=='none'){
       const controls=document.createElement('div');
@@ -941,6 +1089,7 @@ $('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.val
 window.addEventListener('resize',scalePreviewPages);
 $('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print-preview-overlay')closePrintPreview();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#print-preview-overlay').hidden)closePrintPreview();});
+installFolderReordering();
 $('#catalog-search').addEventListener('input',()=>{selectedCatalogIds.clear();renderCatalog();});
 $('#catalog-tag-filter').addEventListener('change',()=>{selectedCatalogIds.clear();renderCatalog();});
 $('#catalog-sort').addEventListener('change',renderCatalog);
