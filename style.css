@@ -370,43 +370,54 @@ body.print-preview-open{overflow:hidden}
   .catalog-browser{grid-template-columns:minmax(285px,35%) minmax(0,1fr)}
 }
 
-/* v1.17: inset Edit/Delete controls within the same rounded folder card. */
+/* v1.18: Edit/Delete buttons stacked at the right INSIDE each folder card. */
 .folder-list-item{
   display:flex;
-  flex-direction:column;
+  flex-direction:row;
+  align-items:stretch;
   min-width:0;
-  min-height:145px;
+  min-height:126px;
   overflow:visible
 }
 .folder-open{
   flex:1 1 auto;
-  width:100%;
-  min-height:100px;
-  padding:10px 10px 7px;
+  width:auto;
+  min-width:0;
+  min-height:124px;
+  padding:10px 5px 10px 9px;
   border-radius:11px;
   box-sizing:border-box
 }
 .folder-card-controls{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
+  display:flex;
+  flex:0 0 52px;
+  flex-direction:column;
+  align-self:center;
+  justify-content:center;
   gap:7px;
-  margin:0 9px 9px;
+  width:52px;
+  min-width:0;
+  margin:8px 8px 8px 0;
   padding:0;
-  border:0;
-  min-width:0
+  border:0
 }
 .folder-card-controls button,
 .folder-card-controls button+button{
+  display:block;
+  flex:0 0 auto;
+  width:100%;
   min-width:0;
-  min-height:34px;
-  padding:6px 3px;
+  min-height:39px;
+  padding:7px 2px;
   border:1px solid #d7e2ef;
   border-radius:7px;
   background:#ffffff;
   color:#315f9f;
   font-size:12px;
   font-weight:650;
-  line-height:1.2;
+  line-height:1.25;
+  white-space:nowrap;
+  text-align:center;
   cursor:pointer
 }
 .folder-card-controls .folder-card-delete{
