@@ -257,7 +257,7 @@ body.print-preview-open{overflow:hidden}
 .folder-menu-options button:hover,.product-menu-options button:hover{background:#f0f4f9}
 .folder-menu-options .destructive,.product-menu-options .destructive{color:#b33434}
 .folder-create-form[hidden],.catalog-bulk[hidden]{display:none!important}
-.folder-create-form{display:flex;flex-direction:column;gap:8px;border-radius:12px;background:#f5f8fc;margin-top:10px;padding:10px}
+.folder-create-form{display:flex;flex-direction:column;align-items:stretch;gap:8px;border-radius:12px;background:#f5f8fc;margin-top:10px;padding:10px}
 .folder-create-form input{width:100%;min-width:0}
 .folder-form-actions{display:flex;gap:8px}
 .folder-form-actions .button{flex:1}
@@ -303,3 +303,9 @@ body.print-preview-open{overflow:hidden}
   .catalog-bulk #bulk-count{width:100%}
 }
 @media print{.folder-sidebar,.catalog-content{display:none!important}}
+
+/* Consistent blue folder pictogram without platform-dependent emoji. */
+.folder-glyph{position:relative;font-size:0!important}
+.folder-glyph::before{content:"";position:absolute;left:7px;top:13px;width:25px;height:17px;border-radius:3px;background:#397edc}
+.folder-glyph::after{content:"";position:absolute;left:7px;top:9px;width:13px;height:8px;border-radius:3px 3px 0 0;background:#397edc}
+.folder-form-actions{width:100%}
