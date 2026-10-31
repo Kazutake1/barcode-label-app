@@ -1,6 +1,7 @@
 'use strict';
 // JAN/EAN printing is generated locally. Scanning loads a pinned ZXing decoder only when requested.
 const STORE_KEY = 'barcode-label-local-v1';
+const CATALOG_KEY = 'barcode-label-catalog-v1';
 const SCAN_LIBRARY_URL = 'https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js';
 const L = ['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
 const G = ['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111'];
@@ -8,6 +9,8 @@ const R = ['1110010','1100110','1101100','1000010','1011100','1001110','1010000'
 const PARITY = ['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
 const $ = selector => document.querySelector(selector);
 let records = readRecords();
+let catalog = readCatalog();
+let editingCatalogId = null;
 let editingId = null;
 let scanControls = null;
 let reader = null;
@@ -93,6 +96,110 @@ function readRecords(){
       .map(x=>({id:String(x.id||''),code:String(x.code),name:x.name,qty:Math.max(1,Math.min(99,Number(x.qty)||1)),selected:x.selected!==false}));
   }catch{return []}
 }
+
+function readCatalog(){
+  try{
+    const items=JSON.parse(localStorage.getItem(CATALOG_KEY)||'[]');
+    if(!Array.isArray(items))return [];
+    const seen=new Set();
+    return items.filter(x=>{
+      if(!x||typeof x.name!=='string'||!x.name.trim()||x.name.length>80||!codeInfo(x.code).ok||seen.has(x.code))return false;
+      seen.add(x.code);return true;
+    }).slice(0,500).map(x=>({
+      id:String(x.id||makeId()),code:x.code,name:x.name,
+      createdAt:typeof x.createdAt==='string'&&!Number.isNaN(Date.parse(x.createdAt))?x.createdAt:null,
+      updatedAt:typeof x.updatedAt==='string'&&!Number.isNaN(Date.parse(x.updatedAt))?x.updatedAt:null
+    }));
+  }catch{return [];}
+}
+function makeId(){return globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2);}
+function saveCatalog(){
+  try{localStorage.setItem(CATALOG_KEY,JSON.stringify(catalog));return true;}
+  catch{toast('保存に失敗しました。端末の空き容量やSafariの設定を確認してください。','error');return false;}
+}
+function migrateOldProducts(){
+  try{if(localStorage.getItem(CATALOG_KEY)!==null)return;}catch{return;}
+  const unique=new Map();
+  for(const rec of records)if(!unique.has(rec.code))unique.set(rec.code,{
+    id:makeId(),code:rec.code,name:rec.name,createdAt:null,updatedAt:null
+  });
+  catalog=[...unique.values()];
+  saveCatalog();
+}
+function registrationLabel(value){
+  if(!value)return '登録日：不明（以前の登録）';
+  try{
+    const date=new Date(value);
+    if(Number.isNaN(date.getTime()))return '登録日：不明';
+    const formatted=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);
+    return '登録日：'+formatted;
+  }catch{return '登録日：不明';}
+}
+function upsertCatalog(data,originalCode=null){
+  let original=originalCode?catalog.find(x=>x.code===originalCode):catalog.find(x=>x.code===data.code);
+  const duplicate=catalog.find(x=>x.code===data.code);
+  if(original&&duplicate&&original.id!==duplicate.id)throw Error('このバーコード番号は別の商品として登録済みです。');
+  if(!original)original=duplicate;
+  if(!original&&catalog.length>=500)throw Error('保存できる商品は500件までです。');
+  const now=new Date().toISOString();
+  const entry=original
+    ?{...original,code:data.code,name:data.name,updatedAt:now}
+    :{id:makeId(),code:data.code,name:data.name,createdAt:now,updatedAt:now};
+  const previous=catalog;
+  catalog=original
+    ?catalog.map(x=>x.id===original.id?entry:x)
+    :[entry,...catalog];
+  if(!saveCatalog()){catalog=previous;throw Error('商品データを保存できませんでした。');}
+  return entry;
+}
+function renderCatalog(){
+  $('#catalog-count').textContent=catalog.length+'件';
+  const term=$('#catalog-search').value.trim().toLocaleLowerCase();
+  const filtered=catalog.filter(x=>x.name.toLocaleLowerCase().includes(term)||x.code.includes(term));
+  const target=$('#catalog-items');target.replaceChildren();
+  if(!filtered.length){
+    const empty=document.createElement('div');empty.className='empty-list';
+    empty.textContent=term?'該当する商品がありません。':'商品を登録すると、ここに保存されます。';
+    target.append(empty);return;
+  }
+  for(const product of filtered){
+    const row=document.createElement('div');row.className='catalog-item';
+    const data=document.createElement('div');data.className='catalog-details';
+    const name=document.createElement('div');name.className='catalog-name';name.textContent=product.name;
+    const code=document.createElement('div');code.className='catalog-code';code.textContent=product.code;
+    const date=document.createElement('div');date.className='catalog-date';date.textContent=registrationLabel(product.createdAt);
+    data.append(name,code,date);
+    const actions=document.createElement('div');actions.className='catalog-actions';
+    const add=document.createElement('button');add.type='button';add.className='catalog-add';add.textContent='印刷リストに追加';
+    add.addEventListener('click',()=>{
+      const existing=records.find(x=>x.code===product.code);
+      if(existing){existing.name=product.name;existing.selected=true;toast('印刷リストの既存商品を選択しました。');}
+      else{
+        if(records.length>=200){toast('印刷リストは200件までです。不要な商品をリストから削除してください。','error');return;}
+        records.unshift({id:makeId(),code:product.code,name:product.name,qty:1,selected:true});
+        toast('印刷リストに追加しました。');
+      }
+      saveRecords();renderRecords();
+    });
+    const edit=document.createElement('button');edit.type='button';edit.textContent='編集';
+    edit.addEventListener('click',()=>{
+      editingId=null;editingCatalogId=product.id;
+      $('#code').value=product.code;$('#name').value=product.name;$('#qty').value='1';
+      $('#save').textContent='商品情報を更新';
+      updatePreview();window.scrollTo({top:0,behavior:'smooth'});$('#name').focus();
+    });
+    const del=document.createElement('button');del.type='button';del.className='catalog-delete';del.textContent='削除';
+    del.addEventListener('click',()=>{
+      if(!window.confirm('「'+product.name+'」を保存商品から削除しますか？\\n印刷リストの内容は残ります。'))return;
+      const old=catalog;catalog=catalog.filter(x=>x.id!==product.id);
+      if(!saveCatalog()){catalog=old;return;}
+      if(editingCatalogId===product.id)clearForm();
+      renderCatalog();toast('保存商品から削除しました。');
+    });
+    actions.append(add,edit,del);row.append(data,actions);target.append(row);
+  }
+}
+
 function saveRecords(){try{localStorage.setItem(STORE_KEY,JSON.stringify(records));}catch{toast('端末の保存領域に空きがありません。','error');}}
 function toast(message,type='ok'){
   const target=$('#toast');target.textContent=message;target.className='toast show'+(type==='error'?' error':'');
@@ -122,12 +229,12 @@ function updatePreview(){
   }
 }
 function clearForm(){
-  editingId=null;HTMLFormElement.prototype.reset.call($('#editor'));$('#qty').value='1';$('#save').textContent='リストに追加';updatePreview();
+  editingId=null;editingCatalogId=null;HTMLFormElement.prototype.reset.call($('#editor'));$('#qty').value='1';$('#save').textContent='保存して印刷リストに追加';updatePreview();
 }
 function renderRecords(){
   $('#item-count').textContent=records.length+'件';
   const target=$('#items');target.replaceChildren();
-  if(!records.length){const empty=document.createElement('div');empty.className='empty-list';empty.textContent='保存した商品がここに並びます。';target.append(empty);}
+  if(!records.length){const empty=document.createElement('div');empty.className='empty-list';empty.textContent='印刷リストは空です。保存した商品からも追加できます。';target.append(empty);}
   for(const rec of records){
     const wrapper=document.createElement('div');wrapper.className='item';
     const check=document.createElement('input');check.type='checkbox';check.className='item-check';check.checked=rec.selected;
@@ -138,7 +245,7 @@ function renderRecords(){
     detail.append(nm,sub);
     const actions=document.createElement('div');actions.className='item-actions';
     const edit=document.createElement('button');edit.type='button';edit.textContent='編集';
-    edit.addEventListener('click',()=>{editingId=rec.id;$('#code').value=rec.code;$('#name').value=rec.name;$('#qty').value=rec.qty;$('#save').textContent='変更を保存';updatePreview();window.scrollTo({top:0,behavior:'smooth'});});
+    edit.addEventListener('click',()=>{editingCatalogId=null;editingId=rec.id;$('#code').value=rec.code;$('#name').value=rec.name;$('#qty').value=rec.qty;$('#save').textContent='変更を保存';updatePreview();window.scrollTo({top:0,behavior:'smooth'});});
     const del=document.createElement('button');del.type='button';del.textContent='削除';
     del.addEventListener('click',()=>{records=records.filter(x=>x.id!==rec.id);saveRecords();renderRecords();toast('リストから削除しました。');});
     actions.append(edit,del);wrapper.append(check,detail,actions);target.append(wrapper);
@@ -258,15 +365,31 @@ $('#editor').addEventListener('submit',e=>{
   e.preventDefault();
   try{
     const data=formData();
-    if(editingId){
-      const existing=records.find(x=>x.id===editingId);if(!existing)throw Error('編集対象が見つかりません。');
-      Object.assign(existing,data);toast('変更を保存しました。');
-    }else{
-      if(records.length>=200)throw Error('保存できるのは200商品までです。');
-      records.unshift({id:String(Date.now())+'-'+Math.random().toString(36).slice(2),...data,selected:true});
-      toast(`${data.name}を印刷リストに追加しました。`);
+    if(editingCatalogId){
+      const product=catalog.find(x=>x.id===editingCatalogId);
+      if(!product)throw Error('編集対象が見つかりません。');
+      const previousCode=product.code;
+      upsertCatalog(data,previousCode);
+      for(const rec of records)if(rec.code===previousCode){rec.code=data.code;rec.name=data.name;}
+      saveRecords();renderRecords();renderCatalog();
+      clearForm();toast('商品情報を更新しました。登録日は変更されません。');
+      return;
     }
-    saveRecords();renderRecords();clearForm();
+    if(editingId){
+      const existing=records.find(x=>x.id===editingId);
+      if(!existing)throw Error('編集対象が見つかりません。');
+      const previousCode=existing.code;
+      upsertCatalog(data,previousCode);
+      Object.assign(existing,data);
+      for(const rec of records)if(rec.code===data.code)rec.name=data.name;
+      toast('印刷リストと保存商品を更新しました。');
+    }else{
+      if(records.length>=200)throw Error('印刷リストは200件までです。');
+      upsertCatalog(data);
+      records.unshift({id:makeId(),...data,selected:true});
+      toast('商品とバーコードを保存し、印刷リストに追加しました。');
+    }
+    saveRecords();renderRecords();renderCatalog();clearForm();
   }catch(err){toast(err.message,'error');}
 });
 $('#code').addEventListener('input',updatePreview);
@@ -282,9 +405,10 @@ $('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.val
 $('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print-preview-overlay')closePrintPreview();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#print-preview-overlay').hidden)closePrintPreview();});
 $('#paper').addEventListener('change',()=>{$('#sheet-hint').textContent=$('#paper').value+'：2列';});
+$('#catalog-search').addEventListener('input',renderCatalog);
 $('#clear-all').addEventListener('click',()=>{
   if(!records.length)return;
-  if(window.confirm(`保存された${records.length}件の商品をすべて削除しますか？`)){
+  if(window.confirm(`印刷リストの${records.length}件をすべて削除しますか？保存した商品は残ります。`)){
     records=[];saveRecords();renderRecords();clearForm();toast('印刷リストを削除しました。');
   }
 });
@@ -294,4 +418,4 @@ $('#photo-input').addEventListener('change',e=>scanPhoto(e.target.files?.[0]));
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCamera();});
 window.addEventListener('pagehide',stopCamera);
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
-renderRecords();updatePreview();
+migrateOldProducts();renderRecords();renderCatalog();updatePreview();
