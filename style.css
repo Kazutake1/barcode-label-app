@@ -433,3 +433,17 @@ body.print-preview-open{overflow:hidden}
   .folder-card-controls button:hover{background:#eaf3ff}
   .folder-card-controls .folder-card-delete:hover{background:#fff0f0}
 }
+
+/* v1.19: anchor the folder name and product count at the bottom-left. */
+.folder-open .folder-info{
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  justify-content:flex-end;
+  align-items:flex-start;
+  width:100%;
+  min-width:0;
+  min-height:0;
+  margin-top:auto;
+  gap:3px;
+}
