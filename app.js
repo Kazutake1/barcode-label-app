@@ -74,18 +74,13 @@ function createBarcodeSvg(code) {
 }
 function createLabel({code,name}){
   const container=document.createElement('div');container.className='product-label';
-  const head=document.createElement('div');head.className='label-head';
-  const headName=document.createElement('div');headName.textContent='商品名';
-  const headCode=document.createElement('div');headCode.textContent='バーコード';
-  head.append(headName,headCode);
-
   const body=document.createElement('div');body.className='label-body';
   const nameCell=document.createElement('div');nameCell.className='name-cell';nameCell.textContent=name||'商品名';
   const barcodeCell=document.createElement('div');barcodeCell.className='barcode-cell';
   barcodeCell.append(createBarcodeSvg(code));
   body.append(nameCell,barcodeCell);
 
-  container.append(head,body);
+  container.append(body);
   return container;
 }
 function readRecords(){
