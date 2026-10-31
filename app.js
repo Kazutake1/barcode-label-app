@@ -177,7 +177,9 @@ function renderCatalog(){
     const name=document.createElement('div');name.className='catalog-name';name.textContent=product.name;
     const code=document.createElement('div');code.className='catalog-code';code.textContent=product.code;
     const date=document.createElement('div');date.className='catalog-date';date.textContent=registrationLabel(product.createdAt);
-    data.append(name,code,date);
+    data.append(name,code);
+    const summary=document.createElement('div');summary.className='catalog-summary';
+    summary.append(data,date);
     const actions=document.createElement('div');actions.className='catalog-actions';
     const add=document.createElement('button');add.type='button';add.className='catalog-add';add.textContent='印刷リストに追加';
     add.addEventListener('click',()=>{
@@ -205,7 +207,7 @@ function renderCatalog(){
       if(editingCatalogId===product.id)clearForm();
       renderCatalog();toast('保存商品から削除しました。');
     });
-    actions.append(add,edit,del);row.append(data,actions);target.append(row);
+    actions.append(add,edit,del);row.append(summary,actions);target.append(row);
   }
 }
 
@@ -440,11 +442,10 @@ $('#print-one').addEventListener('click',()=>{try{printLabels([formData()]);}cat
 $('#print-all').addEventListener('click',()=>printLabels(records.filter(r=>r.selected)));
 $('#close-print-preview').addEventListener('click',closePrintPreview);
 $('#confirm-print').addEventListener('click',confirmPrint);
-$('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.value;$('#sheet-hint').textContent=e.target.value+'：2列';buildPrintSheets();});
+$('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.value;buildPrintSheets();});
 window.addEventListener('resize',scalePreviewPages);
 $('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print-preview-overlay')closePrintPreview();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#print-preview-overlay').hidden)closePrintPreview();});
-$('#paper').addEventListener('change',()=>{$('#sheet-hint').textContent=$('#paper').value+'：2列';});
 $('#catalog-search').addEventListener('input',renderCatalog);
 window.addEventListener('hashchange',()=>showPage(window.location.hash==='#saved'?'saved':'create'));
 $('#clear-all').addEventListener('click',()=>{

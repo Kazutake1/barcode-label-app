@@ -19,8 +19,7 @@
 <body>
 <main class="app">
   <header class="app-header">
-    <div class="brand"><span class="brand-logo" aria-hidden="true">▥</span><div><h1>バーコードラベル</h1><p>商品名とJANコードを一緒に印刷</p></div></div>
-    <span class="local-chip">データはこの端末内に保存</span>
+    <div class="brand"><span class="brand-logo" aria-hidden="true">▥</span><h1>バーコードラベル</h1></div>
   </header>
   <nav class="page-nav" aria-label="アプリのページ">
     <a id="nav-create" href="#create" aria-current="page">ラベル作成・印刷</a>
@@ -52,9 +51,8 @@
       </form>
     </div>
     <div class="panel preview-panel">
-      <div class="preview-header"><h2>ラベルのプレビュー</h2><span>印刷時は黒・白で出力</span></div>
+      <div class="preview-header"><h2>ラベルのプレビュー</h2></div>
       <div class="preview-stage" id="preview"><div class="preview-empty">番号を入力すると<br>バーコードを表示します</div></div>
-      <div class="preview-note">チェックデジットが正しい番号だけを生成します。<br>元の商品に付いているバーコードを複製する用途を想定しています。</div>
       <button type="button" id="print-one" class="button outline full">このラベルを印刷</button>
     </div>
   </section>
@@ -62,7 +60,7 @@
     <div class="items-header"><div><h2>印刷リスト <span id="item-count" class="count">0件</span></h2><p>印刷する商品にチェックを入れてください。</p></div><button type="button" id="clear-all" class="button quiet-small">すべて削除</button></div>
     <div id="items" class="items"><div class="empty-list">印刷リストは空です。</div></div>
     <div class="print-toolbar">
-      <div class="print-settings"><label for="paper">用紙</label><select id="paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦・JIS）</option></select><span id="sheet-hint">A4：2列</span></div>
+      <div class="print-settings"><label for="paper">用紙</label><select id="paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦・JIS）</option></select></div>
       <button type="button" id="print-all" class="button primary print-button">選択したラベルの印刷プレビュー</button>
     </div>
     <p id="print-feedback" class="print-feedback" role="status" aria-live="polite" hidden></p>
@@ -71,14 +69,12 @@
   <section id="catalog-page" class="panel catalog-panel app-page" hidden>
     <div class="catalog-header">
       <div><h2>保存した商品 <span id="catalog-count" class="count">0件</span></h2>
-      <p>商品名・バーコード・登録日を端末内に保存。印刷リストを削除しても残ります。</p></div>
+      </div>
     </div>
     <label for="catalog-search" class="catalog-search-label">保存した商品を検索</label>
     <input id="catalog-search" type="search" autocomplete="off" placeholder="商品名・バーコード番号で検索">
     <div id="catalog-items" class="catalog-items"><div class="empty-list">商品を登録すると、ここに保存されます。</div></div>
-    <p class="catalog-note">この一覧は現在使用中のSafari内に保存されます。SafariのWebサイトデータを消去すると保存情報も失われます。別の端末との自動同期はありません。</p>
   </section>
-  <footer><span>商品名は自動取得されません。ブラウザの印刷画面では倍率を100%にし、用紙サイズを合わせてください。</span><span>v1.10 商品一覧を別ページ化</span></footer>
 </main>
 <div id="print-preview-overlay" class="print-preview-overlay" hidden>
   <section class="print-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="print-preview-title">

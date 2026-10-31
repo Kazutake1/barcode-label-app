@@ -130,3 +130,16 @@ body.print-preview-open{overflow:hidden}
 #catalog-page{margin-top:0}
 @media(max-width:720px){.page-nav{gap:7px;margin:0 0 14px}.page-nav a{font-size:13px;padding:10px 7px}}
 @media print{.page-nav,.app-page{display:none!important}}
+
+/* v1.11 — remove the marked explanatory copy and put the registration date
+   at the right of each saved product, without changing its stored value. */
+.catalog-item{flex-direction:column;align-items:stretch}
+.catalog-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;width:100%}
+.catalog-summary .catalog-details{flex:1;min-width:0}
+.catalog-summary .catalog-date{flex:0 0 auto;text-align:right;white-space:nowrap;margin:0;font-size:11px;color:#67768a}
+.catalog-item .catalog-actions{width:100%;justify-content:flex-start}
+.catalog-item .catalog-actions button{flex:1}
+@media(max-width:720px){
+  .catalog-summary{gap:6px}
+  .catalog-summary .catalog-date{font-size:11px}
+}
