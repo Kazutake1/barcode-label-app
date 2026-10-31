@@ -272,7 +272,7 @@ function buildPrintSheets(){
   target.className='print-sheet'+(isB5?' b5':'');
   for(const item of flat)target.append(createLabel(item));
   const pages=$('#print-preview-pages');pages.replaceChildren();
-  const perPage=10;
+  const perPage=isB5?14:16;
   for(let offset=0;offset<flat.length;offset+=perPage){
     const page=document.createElement('div');page.className='print-preview-page'+(isB5?' b5':'');
     const grid=document.createElement('div');grid.className='print-preview-grid';
