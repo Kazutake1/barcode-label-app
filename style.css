@@ -11,3 +11,33 @@ label:not(.button){display:block;font-size:13px;font-weight:720;margin:15px 0 7p
 @media(max-width:720px){.app{padding:15px 12px 26px}.app-header{align-items:start}.brand-logo{width:43px;height:43px;font-size:24px}.app-header h1{font-size:20px}.app-header p{font-size:11px}.local-chip{font-size:10px;white-space:normal;max-width:112px;text-align:center}.workspace{grid-template-columns:1fr}.panel{padding:18px;border-radius:16px}.scan-actions{gap:7px}.button{font-size:13px}.preview-stage{min-height:230px}.items-header h2{font-size:17px}.print-toolbar{align-items:stretch;flex-direction:column}.print-button{width:100%}.item{gap:9px;padding:10px}.item-actions{flex-direction:column}.item-name{font-size:13px}.item-sub{font-size:11px}footer{flex-direction:column}}
 @media print{html,body{margin:0;padding:0;background:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.app,.toast{display:none!important}.print-sheet{display:grid!important;gap:3mm;align-content:start;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.product-label{width:100%;max-width:none;min-height:48mm;height:48mm;margin:0;border:.35mm solid #111;border-radius:0;padding:0;box-shadow:none!important}.product-label .label-head{border-bottom:.35mm solid #111}.product-label .label-head div{font-size:9.5pt;padding:2mm 1.2mm}.product-label .label-head div:first-child,.product-label .name-cell{border-right:.35mm solid #111}.product-label .label-body{min-height:39mm;height:39mm}.product-label .name-cell{font-size:11pt;padding:2.6mm 2mm}.product-label .barcode-cell{padding:2mm 1.6mm 1.4mm}.product-label svg{max-height:33mm!important;max-width:100%;width:auto!important}.print-sheet.b5 .product-label{min-height:44mm;height:44mm}.print-sheet.b5 .product-label .label-body{min-height:35mm;height:35mm}.print-sheet .product-label{page-break-inside:avoid;break-inside:avoid}}
 @page{margin:8mm}@page a4{size:A4 portrait;margin:8mm}@page b5{size:182mm 257mm;margin:7mm}@media print{.print-sheet{page:a4}.print-sheet.b5{page:b5}}
+
+/* On-screen paper preview (the actual print layout remains separate). */
+.print-feedback[hidden],.print-preview-overlay[hidden]{display:none!important}
+.print-feedback{background:#fff0f0;border:1px solid #eab5b5;border-radius:10px;padding:13px;color:#a12b2b;font-size:13px;line-height:1.6}
+body.print-preview-open{overflow:hidden}
+.print-preview-overlay{position:fixed;z-index:500;inset:0;background:rgba(16,26,40,.7);overflow-y:auto;display:flex;justify-content:center;align-items:flex-start;padding:18px 10px 32px}
+.print-preview-dialog{width:100%;max-width:680px;background:#f3f5f9;color:#18212f;border-radius:16px;padding:18px 13px 23px;box-shadow:0 16px 45px #0004}
+.print-preview-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.print-preview-heading h2{font-size:20px;margin:0}
+.print-preview-settings{display:flex;align-items:center;gap:10px}
+.print-preview-settings label{margin:0!important;font-size:13px}
+.print-preview-settings select{width:155px;height:42px;padding:8px;font-size:14px}
+.print-preview-meta{font-size:12px;color:#657386;margin:10px 0 15px}
+.print-preview-pages{display:grid;gap:20px;justify-items:center}
+.print-preview-page{width:100%;max-width:560px;aspect-ratio:210/297;background:#fff;padding:3.8%;box-shadow:0 5px 18px #0002}
+.print-preview-page.b5{aspect-ratio:182/257;padding:3.85%}
+.print-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.1% 1.6%;align-content:start}
+.print-preview-page .product-label{width:100%;max-width:none;height:auto;min-height:0;aspect-ratio:1.99;overflow:hidden;border:1px solid #151515;grid-template-rows:24% 76%}
+.print-preview-page.b5 .product-label{aspect-ratio:1.875}
+.print-preview-page .label-head{min-height:0;align-items:stretch}
+.print-preview-page .label-head div{font-size:clamp(6px,1.8vw,10px);padding:1px;display:flex;align-items:center;justify-content:center}
+.print-preview-page .label-body{min-height:0;height:auto}
+.print-preview-page .name-cell{font-size:clamp(6px,2vw,11px);padding:3px;line-height:1.25}
+.print-preview-page .barcode-cell{padding:2px 1px}
+.print-preview-page svg{max-width:100%;max-height:100%;width:auto;height:auto}
+.print-guidance{font-size:12px;line-height:1.7;color:#536477;padding:12px 3px;margin:8px 0}
+.print-preview-actions{display:flex;justify-content:flex-end;position:sticky;bottom:0;padding:10px 0;background:#f3f5f9}
+.print-preview-actions .button{width:min(100%,270px)}
+@media(max-width:720px){.print-preview-dialog{padding:14px 10px}.print-preview-page{box-shadow:0 3px 12px #0002}.print-preview-actions .button{width:100%}}
+@media print{.print-preview-overlay{display:none!important}body.print-preview-open{overflow:visible!important}}
