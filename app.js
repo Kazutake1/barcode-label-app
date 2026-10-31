@@ -242,7 +242,8 @@ async function exportBackup(){
   }
   const documentData=makeBackupDocument();
   const blob=new Blob([JSON.stringify(documentData,null,2)],{type:'application/json'});
-  const localDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('/','-');
+  const dateParts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
+  const localDay=[dateParts.year,dateParts.month,dateParts.day].join('-');
   const filename='barcode-label-backup-'+localDay+'.json';
   try{
     // Safari on iPhone/iPad can save the shared file directly to Files.
@@ -348,14 +349,14 @@ async function restoreBackup(file){
   try{
     if(!file.name?.toLowerCase().endsWith('.json'))throw Error('JSONファイル（.json）を選択してください。');
     if(file.size>BACKUP_FILE_LIMIT)throw Error('ファイルが大きすぎます（上限2MB）。');
-    const raw=JSON.parse((await file.text()).replace(/^\\uFEFF/,''));
+    const raw=JSON.parse((await file.text()).replace(/^\uFEFF/,''));
     const parsed=validateBackupDocument(raw);
     if(!parsed.products.length&&!parsed.printItems.length){
       backupStatus('バックアップには商品情報が入っていません。',true);return;
     }
     const proposed=parsed.products.filter(x=>!catalog.some(current=>current.code===x.code)).length;
     const answer=window.confirm(
-      `保存商品：${parsed.products.length}件（うち未登録 ${proposed}件）\\n印刷リスト：${parsed.printItems.length}件\\n\\n既存データを残して追加します。\\n同じバーコード番号の商品は上書きしません。\\n\\n復元しますか？`
+      `保存商品：${parsed.products.length}件（うち未登録 ${proposed}件）\n印刷リスト：${parsed.printItems.length}件\n\n既存データを残して追加します。\n同じバーコード番号の商品は上書きしません。\n\n復元しますか？`
     );
     if(!answer){backupStatus('復元をキャンセルしました。');return;}
     const result=mergeBackup(parsed);
