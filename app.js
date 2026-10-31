@@ -261,6 +261,7 @@ function printLabels(items){
   buildPrintSheets();
   $('#print-preview-overlay').hidden=false;
   document.body.classList.add('print-preview-open');
+  scalePreviewPages();
   $('#close-print-preview').focus();
 }
 function buildPrintSheets(){
@@ -268,23 +269,49 @@ function buildPrintSheets(){
   const isB5=paper==='B5';
   const flat=[];
   for(const item of stagedPrintItems)for(let i=0;i<item.qty;i++)flat.push(item);
-  const target=$('#print-sheet');target.replaceChildren();
-  target.className='print-sheet'+(isB5?' b5':'');
-  for(const item of flat)target.append(createLabel(item));
-  const pages=$('#print-preview-pages');pages.replaceChildren();
+
+  // Both views use the same page and label nodes. Preview only scales a clone.
+  const target=$('#print-sheet');
+  target.replaceChildren();
+  target.className='print-sheet '+(isB5?'b5':'a4');
+  const preview=$('#print-preview-pages');
+  preview.replaceChildren();
   const perPage=isB5?14:16;
   for(let offset=0;offset<flat.length;offset+=perPage){
-    const page=document.createElement('div');page.className='print-preview-page'+(isB5?' b5':'');
-    const grid=document.createElement('div');grid.className='print-preview-grid';
+    const page=document.createElement('div');
+    page.className='paper-page'+(isB5?' b5':'');
+    const grid=document.createElement('div');
+    grid.className='paper-label-grid';
     for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item));
-    page.append(grid);pages.append(page);
+    page.append(grid);
+    target.append(page);
+
+    const viewport=document.createElement('div');
+    viewport.className='preview-page-viewport';
+    viewport.append(page.cloneNode(true));
+    preview.append(viewport);
   }
   $('#preview-paper').value=paper;
   $('#print-preview-meta').textContent=`${paper}・縦向き・2列 / ${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
   const standalone=window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
   $('#print-guidance').textContent=standalone
-    ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いて印刷してください。'
-    : '次の「印刷画面を開く」を押すと、Safariの印刷設定が表示されます。用紙サイズも印刷設定で同じサイズにしてください。';
+    ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いてください。プリンターの用紙サイズはアプリと一致させてください。'
+    : '「印刷画面を開く」の後、プリンターの用紙サイズを上で選んだサイズに合わせ、倍率を100%にしてください。';
+  scalePreviewPages();
+}
+function scalePreviewPages(){
+  for(const viewport of document.querySelectorAll('.preview-page-viewport')){
+    const page=viewport.firstElementChild;
+    if(!page)continue;
+    // Keep true mm dimensions. Only shrink the page visually inside the modal.
+    const pageWidth=page.offsetWidth, pageHeight=page.offsetHeight;
+    const available=viewport.clientWidth;
+    if(!pageWidth||!pageHeight||!available)continue;
+    const scale=Math.min(1,available/pageWidth);
+    page.style.transform=`scale(${scale})`;
+    page.style.left=`${Math.max(0,(available-pageWidth*scale)/2)}px`;
+    viewport.style.height=`${Math.ceil(pageHeight*scale)}px`;
+  }
 }
 function closePrintPreview(){
   $('#print-preview-overlay').hidden=true;
@@ -397,6 +424,7 @@ $('#print-all').addEventListener('click',()=>printLabels(records.filter(r=>r.sel
 $('#close-print-preview').addEventListener('click',closePrintPreview);
 $('#confirm-print').addEventListener('click',confirmPrint);
 $('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.value;$('#sheet-hint').textContent=e.target.value+'：2列';buildPrintSheets();});
+window.addEventListener('resize',scalePreviewPages);
 $('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print-preview-overlay')closePrintPreview();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#print-preview-overlay').hidden)closePrintPreview();});
 $('#paper').addEventListener('change',()=>{$('#sheet-hint').textContent=$('#paper').value+'：2列';});
