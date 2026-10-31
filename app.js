@@ -147,6 +147,20 @@ function upsertCatalog(data,originalCode=null){
   if(!saveCatalog()){catalog=previous;throw Error('商品データを保存できませんでした。');}
   return entry;
 }
+function showPage(page){
+  const saved=page==='saved';
+  $('#create-page').hidden=saved;
+  $('#catalog-page').hidden=!saved;
+  $('#nav-create').setAttribute('aria-current',saved?'false':'page');
+  $('#nav-saved').setAttribute('aria-current',saved?'page':'false');
+  if(saved)stopCamera();
+  window.scrollTo({top:0,behavior:'auto'});
+}
+function openCreatePage(){
+  showPage('create');
+  if(window.location.hash!=='#create')window.location.hash='#create';
+}
+
 function renderCatalog(){
   $('#catalog-count').textContent=catalog.length+'件';
   const term=$('#catalog-search').value.trim().toLocaleLowerCase();
@@ -181,7 +195,7 @@ function renderCatalog(){
       editingId=null;editingCatalogId=product.id;
       $('#code').value=product.code;$('#name').value=product.name;$('#qty').value='1';
       $('#save').textContent='商品情報を更新';
-      updatePreview();window.scrollTo({top:0,behavior:'smooth'});$('#name').focus();
+      updatePreview();openCreatePage();$('#name').focus();
     });
     const del=document.createElement('button');del.type='button';del.className='catalog-delete';del.textContent='削除';
     del.addEventListener('click',()=>{
@@ -432,6 +446,7 @@ $('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#print-preview-overlay').hidden)closePrintPreview();});
 $('#paper').addEventListener('change',()=>{$('#sheet-hint').textContent=$('#paper').value+'：2列';});
 $('#catalog-search').addEventListener('input',renderCatalog);
+window.addEventListener('hashchange',()=>showPage(window.location.hash==='#saved'?'saved':'create'));
 $('#clear-all').addEventListener('click',()=>{
   if(!records.length)return;
   if(window.confirm(`印刷リストの${records.length}件をすべて削除しますか？保存した商品は残ります。`)){
@@ -444,4 +459,4 @@ $('#photo-input').addEventListener('change',e=>scanPhoto(e.target.files?.[0]));
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCamera();});
 window.addEventListener('pagehide',stopCamera);
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
-migrateOldProducts();renderRecords();renderCatalog();updatePreview();
+migrateOldProducts();renderRecords();renderCatalog();updatePreview();showPage(window.location.hash==='#saved'?'saved':'create');

@@ -120,3 +120,13 @@ body.print-preview-open{overflow:hidden}
 .preview-stage .product-label .label-body{grid-template-columns:46% 54%}
 .preview-stage .product-label .name-cell{font-size:13pt;line-height:1.2;padding:1.4mm}
 .preview-stage .product-label .barcode-cell{padding:1mm}
+
+/* v1.10 — separate saved-product and label-creation screens, same local data. */
+.app-page[hidden]{display:none!important}
+.page-nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:-5px 0 18px}
+.page-nav a{min-height:46px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;background:#e8edf4;border:1px solid #dbe3ed;border-radius:11px;color:#526579;padding:11px 10px;font-size:14px;font-weight:720}
+.page-nav a[aria-current="page"]{background:#1769d4;border-color:#1769d4;color:#fff}
+.page-nav a:focus-visible{outline:3px solid #70a8fa;outline-offset:2px}
+#catalog-page{margin-top:0}
+@media(max-width:720px){.page-nav{gap:7px;margin:0 0 14px}.page-nav a{font-size:13px;padding:10px 7px}}
+@media print{.page-nav,.app-page{display:none!important}}
