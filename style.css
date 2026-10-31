@@ -61,3 +61,13 @@ body.print-preview-open{overflow:hidden}
 .catalog-note{font-size:11px;line-height:1.7;color:#7a8795;margin:15px 0 0}
 @media(max-width:720px){.catalog-item{align-items:stretch;flex-direction:column}.catalog-actions{justify-content:flex-start}.catalog-actions button{flex:1}}
 @media print{.catalog-panel{display:none!important}}
+
+/* v1.5: Print only the actual product name and scannable barcode. */
+.product-label{grid-template-rows:1fr}
+.product-label .label-body{height:100%;min-height:0}
+.preview-stage .product-label .label-body{min-height:0}
+.print-preview-page .product-label{grid-template-rows:1fr}
+@media print{
+  .product-label .label-body,
+  .print-sheet.b5 .product-label .label-body{height:100%;min-height:0}
+}
