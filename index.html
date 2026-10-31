@@ -43,7 +43,7 @@
         <input id="name" name="name" maxlength="80" autocomplete="off" placeholder="例：お茶 600ml" required>
         <label for="qty">印刷枚数</label>
         <div class="qty-row"><button id="minus" type="button" class="qty-button" aria-label="印刷枚数を1減らす">−</button><input id="qty" name="qty" type="number" inputmode="numeric" min="1" max="99" value="1" required><button id="plus" type="button" class="qty-button" aria-label="印刷枚数を1増やす">＋</button></div>
-        <div class="form-actions"><button type="submit" id="save" class="button primary">リストに追加</button><button type="button" id="reset" class="button ghost">入力をクリア</button></div>
+        <div class="form-actions"><button type="submit" id="save" class="button primary">保存して印刷リストに追加</button><button type="button" id="reset" class="button ghost">入力をクリア</button></div>
       </form>
     </div>
     <div class="panel preview-panel">
@@ -55,14 +55,24 @@
   </section>
   <section class="panel items-panel">
     <div class="items-header"><div><h2>印刷リスト <span id="item-count" class="count">0件</span></h2><p>印刷する商品にチェックを入れてください。</p></div><button type="button" id="clear-all" class="button quiet-small">すべて削除</button></div>
-    <div id="items" class="items"><div class="empty-list">保存した商品がここに並びます。</div></div>
+    <div id="items" class="items"><div class="empty-list">印刷リストは空です。</div></div>
     <div class="print-toolbar">
       <div class="print-settings"><label for="paper">用紙</label><select id="paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦・JIS）</option></select><span id="sheet-hint">A4：2列</span></div>
       <button type="button" id="print-all" class="button primary print-button">選択したラベルの印刷プレビュー</button>
     </div>
     <p id="print-feedback" class="print-feedback" role="status" aria-live="polite" hidden></p>
   </section>
-  <footer><span>商品名は自動取得されません。ブラウザの印刷画面では倍率を100%にし、用紙サイズを合わせてください。</span><span>v1.3 印刷プレビュー対応版</span></footer>
+  <section class="panel catalog-panel">
+    <div class="catalog-header">
+      <div><h2>保存した商品 <span id="catalog-count" class="count">0件</span></h2>
+      <p>商品名・バーコード・登録日を端末内に保存。印刷リストを削除しても残ります。</p></div>
+    </div>
+    <label for="catalog-search" class="catalog-search-label">保存した商品を検索</label>
+    <input id="catalog-search" type="search" autocomplete="off" placeholder="商品名・バーコード番号で検索">
+    <div id="catalog-items" class="catalog-items"><div class="empty-list">商品を登録すると、ここに保存されます。</div></div>
+    <p class="catalog-note">この一覧は現在使用中のSafari内に保存されます。SafariのWebサイトデータを消去すると保存情報も失われます。別の端末との自動同期はありません。</p>
+  </section>
+  <footer><span>商品名は自動取得されません。ブラウザの印刷画面では倍率を100%にし、用紙サイズを合わせてください。</span><span>v1.4 商品保存・登録日対応版</span></footer>
 </main>
 <div id="print-preview-overlay" class="print-preview-overlay" hidden>
   <section class="print-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="print-preview-title">
