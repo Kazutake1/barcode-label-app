@@ -92,8 +92,22 @@ body.print-preview-open{overflow:hidden}
   .print-sheet{display:block!important;width:auto!important;margin:0!important;padding:0!important}
   .print-sheet.a4{page:a4}
   .print-sheet.b5{page:b5}
-  .print-sheet .paper-page{box-shadow:none!important;break-after:page;page-break-after:always;break-inside:avoid;page-break-inside:avoid}
-  .print-sheet .paper-page:last-child{break-after:auto;page-break-after:auto}
+  /* Safari sometimes makes a trailing blank sheet when a printable element
+     is exactly as tall as the physical page. Only the labels consume print height. */
+  .print-sheet .paper-page{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    box-shadow:none!important;
+    break-before:auto;
+    page-break-before:auto;
+    break-after:auto;
+    page-break-after:auto;
+    break-inside:avoid;
+    page-break-inside:avoid
+  }
+  .print-sheet .paper-page + .paper-page{break-before:page;page-break-before:always}
   .print-sheet .paper-page .product-label{height:100%;min-height:0}
   .print-sheet .paper-page .product-label .label-body,
   .print-sheet.b5 .paper-page .product-label .label-body{height:100%!important;min-height:0!important}

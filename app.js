@@ -292,11 +292,14 @@ function buildPrintSheets(){
     preview.append(viewport);
   }
   $('#preview-paper').value=paper;
-  $('#print-preview-meta').textContent=`${paper}・縦向き・2列 / ${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
+  $('#print-preview-meta').textContent=`${paper}・縦向き・2列 / ${stagedPrintItems.length}商品・合計${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
   const standalone=window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
   $('#print-guidance').textContent=standalone
     ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いてください。プリンターの用紙サイズはアプリと一致させてください。'
     : '「印刷画面を開く」の後、プリンターの用紙サイズを上で選んだサイズに合わせ、倍率を100%にしてください。';
+  if(flat.length>perPage){
+    $('#print-guidance').textContent=`印刷枚数の合計が${flat.length}枚のため${Math.ceil(flat.length/perPage)}ページになります。1ページに収めたい場合は、各商品の「印刷枚数」を減らしてください。`+' '+$('#print-guidance').textContent;
+  }
   scalePreviewPages();
 }
 function scalePreviewPages(){
