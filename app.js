@@ -133,7 +133,7 @@ function normalizeTags(value,strict=false){
 function validateFolderName(name){
   if(typeof name!=='string')throw Error('フォルダ名を入力してください。');
   const value=name.trim();
-  if(!value||value.length>MAX_FOLDER_NAME||/[\\x00-\\x1f\\x7f]/.test(value)){
+  if(!value||value.length>MAX_FOLDER_NAME||/[\x00-\x1f\x7f]/.test(value)){
     throw Error('フォルダ名は1～30文字で入力してください。');
   }
   return value;
