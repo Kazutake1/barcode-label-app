@@ -2,6 +2,8 @@
 // JAN/EAN printing is generated locally. Scanning loads a pinned ZXing decoder only when requested.
 const STORE_KEY = 'barcode-label-local-v1';
 const CATALOG_KEY = 'barcode-label-catalog-v1';
+const MAX_PRODUCT_TAGS=8;
+const MAX_TAG_LENGTH=20;
 const SCAN_LIBRARY_URL = 'https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js';
 const L = ['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
 const G = ['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111'];
@@ -93,8 +95,6 @@ function readRecords(){
 }
 
 
-const MAX_PRODUCT_TAGS=8;
-const MAX_TAG_LENGTH=20;
 function normalizeTags(value,strict=false){
   if(value===undefined||value===null||value==='')return [];
   const parts=typeof value==='string'?value.split(/[,、，]/):Array.isArray(value)?value:null;
