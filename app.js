@@ -13,6 +13,7 @@ let scanControls = null;
 let reader = null;
 let decoderLoading = null;
 let toastTimer = null;
+let stagedPrintItems = [];
 
 function normalizeCode(value) {
   const translated = String(value).replace(/[０-９]/g, ch=>String(ch.charCodeAt(0)-0xff10));
@@ -143,16 +144,60 @@ function renderRecords(){
     actions.append(edit,del);wrapper.append(check,detail,actions);target.append(wrapper);
   }
 }
+function printFeedback(message){
+  const box=$('#print-feedback');
+  box.textContent=message;
+  box.hidden=!message;
+  if(message)box.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 function printLabels(items){
   const total=items.reduce((sum,item)=>sum+item.qty,0);
-  if(!total){toast('印刷するラベルを選択してください。','error');return;}
-  if(total>200){toast('一度に印刷できるのは200枚までです。枚数を減らしてください。','error');return;}
-  const target=$('#print-sheet');target.replaceChildren();
+  if(!total){printFeedback('印刷する商品がありません。「リストに追加」を押して保存し、印刷する商品にチェックを入れてください。');return;}
+  if(total>200){printFeedback('一度に印刷できるのは200枚までです。枚数を減らしてください。');return;}
+  printFeedback('');
+  stagedPrintItems=items.map(item=>({...item}));
+  buildPrintSheets();
+  $('#print-preview-overlay').hidden=false;
+  document.body.classList.add('print-preview-open');
+  $('#close-print-preview').focus();
+}
+function buildPrintSheets(){
   const paper=$('#paper').value;
-  target.className='print-sheet'+(paper==='B5'?' b5':'');
-  for(const item of items)for(let i=0;i<item.qty;i++)target.append(createLabel(item));
-  // Rendering a full layout before opening the native print dialog avoids empty snapshots on iOS.
-  requestAnimationFrame(()=>requestAnimationFrame(()=>window.print()));
+  const isB5=paper==='B5';
+  const flat=[];
+  for(const item of stagedPrintItems)for(let i=0;i<item.qty;i++)flat.push(item);
+  const target=$('#print-sheet');target.replaceChildren();
+  target.className='print-sheet'+(isB5?' b5':'');
+  for(const item of flat)target.append(createLabel(item));
+  const pages=$('#print-preview-pages');pages.replaceChildren();
+  const perPage=10;
+  for(let offset=0;offset<flat.length;offset+=perPage){
+    const page=document.createElement('div');page.className='print-preview-page'+(isB5?' b5':'');
+    const grid=document.createElement('div');grid.className='print-preview-grid';
+    for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item));
+    page.append(grid);pages.append(page);
+  }
+  $('#preview-paper').value=paper;
+  $('#print-preview-meta').textContent=`${paper}・縦向き・2列 / ${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
+  const standalone=window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
+  $('#print-guidance').textContent=standalone
+    ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いて印刷してください。'
+    : '次の「印刷画面を開く」を押すと、Safariの印刷設定が表示されます。用紙サイズも印刷設定で同じサイズにしてください。';
+}
+function closePrintPreview(){
+  $('#print-preview-overlay').hidden=true;
+  document.body.classList.remove('print-preview-open');
+  $('#print-all').focus();
+}
+function confirmPrint(){
+  if(!stagedPrintItems.length)return;
+  // Keep print inside a direct user click; delayed callbacks can be blocked by Safari.
+  try{
+    void $('#print-sheet').offsetHeight;
+    window.print();
+  }catch(err){
+    $('#print-guidance').textContent='印刷画面を開けませんでした。Safariでこのページを直接開き、再度お試しください。';
+  }
 }
 function handleScanValue(raw){
   const info=codeInfo(raw);
@@ -231,7 +276,12 @@ $('#minus').addEventListener('click',()=>{$('#qty').value=Math.max(1,Number($('#
 $('#plus').addEventListener('click',()=>{$('#qty').value=Math.min(99,Number($('#qty').value||1)+1);});
 $('#print-one').addEventListener('click',()=>{try{printLabels([formData()]);}catch(err){toast(err.message,'error');}});
 $('#print-all').addEventListener('click',()=>printLabels(records.filter(r=>r.selected)));
-$('#paper').addEventListener('change',()=>{$('#sheet-hint').textContent=$('#paper').value==='B5'?'B5：2列':'A4：2列';});
+$('#close-print-preview').addEventListener('click',closePrintPreview);
+$('#confirm-print').addEventListener('click',confirmPrint);
+$('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.value;$('#sheet-hint').textContent=e.target.value+'：2列';buildPrintSheets();});
+$('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print-preview-overlay')closePrintPreview();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#print-preview-overlay').hidden)closePrintPreview();});
+$('#paper').addEventListener('change',()=>{$('#sheet-hint').textContent=$('#paper').value+'：2列';});
 $('#clear-all').addEventListener('click',()=>{
   if(!records.length)return;
   if(window.confirm(`保存された${records.length}件の商品をすべて削除しますか？`)){
