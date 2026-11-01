@@ -564,3 +564,89 @@ body.print-preview-open{overflow:hidden}
 .folder-list-item .folder-card-controls button{
   min-height:44px
 }
+
+/* v1.31: tabbed blue folder cards, based on the supplied reference image. */
+.folder-grid{
+  padding-top:11px;
+  row-gap:19px
+}
+.folder-list-item{
+  isolation:isolate;
+  position:relative;
+  border:0;
+  border-radius:10px 12px 13px 13px;
+  background:linear-gradient(135deg,#35b8fa 0%,#1498ed 43%,#0878d9 100%);
+  box-shadow:inset 0 1px 0 #ffffff5c,0 4px 10px #0c6db333
+}
+.folder-list-item::before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  pointer-events:none;
+  left:2px;
+  top:-10px;
+  width:72%;
+  height:22px;
+  border-radius:9px 9px 0 0;
+  background:linear-gradient(130deg,#35b1fc 0%,#148beb 100%);
+  clip-path:polygon(0 0,66% 0,83% 47%,100% 47%,100% 100%,0 100%)
+}
+.folder-list-item::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:1px;
+  border-radius:9px;
+  background:#c7efff80;
+  pointer-events:none;
+  z-index:0
+}
+.folder-list-item .folder-open,
+.folder-list-item .folder-card-controls{
+  position:relative;
+  z-index:1
+}
+.folder-list-item .folder-open,
+.folder-list-item .folder-open[aria-pressed="true"]{
+  background:transparent
+}
+.folder-list-item .folder-open[aria-pressed="true"]{
+  box-shadow:inset 0 0 0 2px #ffffffc2
+}
+.folder-list-item .folder-glyph{
+  display:none
+}
+.folder-list-item .folder-name{
+  color:#fff;
+  font-weight:760;
+  text-shadow:0 1px 2px #08497d38
+}
+.folder-list-item .folder-count{
+  color:#eef9ff;
+  font-weight:550
+}
+.folder-list-item .folder-card-controls button{
+  border-color:#ffffffd6;
+  background:#fffffff0;
+  box-shadow:0 1px 3px #06559725
+}
+.folder-list-item .folder-card-controls .folder-card-edit{
+  color:#1362a7
+}
+.folder-list-item .folder-card-controls .folder-card-delete{
+  color:#aa3341;
+  background:#fff8f8f5
+}
+.folder-list-item.folder-drop-target{
+  background:linear-gradient(135deg,#39c0ff 0%,#147ed7 100%);
+  box-shadow:0 0 0 3px #0d55ab,0 5px 15px #0b65b94d
+}
+@media(hover:hover){
+  .folder-list-item .folder-card-controls button:hover{background:#fff}
+  .folder-list-item .folder-card-controls .folder-card-delete:hover{background:#ffecef}
+}
+@media print{
+  .folder-list-item::before,.folder-list-item::after{display:none}
+}
