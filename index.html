@@ -47,7 +47,6 @@
         <input id="name" name="name" maxlength="80" autocomplete="off" placeholder="例：お茶 600ml" required>
         <label for="tags">タグ（任意・最大8個）</label>
         <input id="tags" name="tags" maxlength="180" autocomplete="off" placeholder="例：飲料、店舗A">
-        <p class="tag-hint">「、」またはカンマで区切ります。1つ20文字以内。</p>
         <label for="folder-select">保存先フォルダ</label>
         <select id="folder-select" name="folder"><option value="">未分類</option></select>
         <label for="qty">印刷枚数</label>
@@ -62,7 +61,7 @@
     </div>
   </section>
   <section class="panel items-panel">
-    <div class="items-header"><div><h2>印刷リスト <span id="item-count" class="count">0件</span></h2><p>印刷する商品にチェックを入れてください。</p></div><button type="button" id="clear-all" class="button quiet-small">すべて削除</button></div>
+    <div class="items-header"><div><h2>印刷リスト <span id="item-count" class="count">0件</span></h2></div><button type="button" id="clear-all" class="button quiet-small">すべて削除</button></div>
     <div id="items" class="items"><div class="empty-list">印刷リストは空です。</div></div>
     <div class="print-toolbar">
       <div class="print-settings">
