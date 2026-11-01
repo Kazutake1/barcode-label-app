@@ -548,12 +548,12 @@ body.print-preview-open{overflow:hidden}
   justify-self:end
 }
 
-/* v1.27: line up the product-count text with the Delete button in folder cards. */
+/* v1.28: align the bottom edges of product count and Delete button. */
 .folder-list-item .folder-card-controls{
   align-self:flex-end;
   justify-content:flex-end;
   margin-bottom:8px
 }
 .folder-list-item .folder-open{
-  padding-bottom:19px
+  padding-bottom:8px
 }
