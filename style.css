@@ -690,3 +690,6 @@ body.print-preview-open{overflow:hidden}
   .folder-page-actions button:hover{background:#e7f1ff}
   .folder-page-actions #folder-page-delete:hover{background:#ffeaea}
 }
+
+/* v1.33: retain device backup on the folder overview, hide it inside opened folders. */
+.backup-section[hidden]{display:none!important}

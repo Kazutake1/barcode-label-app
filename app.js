@@ -654,6 +654,7 @@ function renderCatalog(){
     $('#folder-page-delete').setAttribute('aria-label',editableFolder.name+'を削除');
   }
   $('#catalog-browser').dataset.opened=String(catalogFolderOpened);
+  $('#catalog-backup-section').hidden=catalogFolderOpened;
   $('#catalog-content').dataset.selecting=String(catalogSelectionMode);
   const selectButton=$('#catalog-select-mode');
   selectButton.textContent=catalogSelectionMode?'完了':'選択';
