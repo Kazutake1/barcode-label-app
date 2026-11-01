@@ -694,15 +694,15 @@ body.print-preview-open{overflow:hidden}
 /* v1.33: retain device backup on the folder overview, hide it inside opened folders. */
 .backup-section[hidden]{display:none!important}
 
-/* v1.36: scale both dimensions together (100/126 = 79.4%).
-   Retain the original blue folder card proportions and two-column grid. */
+/* v1.37: add a little space between folder cards without resizing them. */
 .folder-grid{
-  column-gap:12px;
-  row-gap:16px;
+  column-gap:16px;
+  row-gap:20px;
   padding-top:10px
 }
 .folder-list-item{
-  width:79.4%;
+  /* Compensate for the 4px larger column gap: each column is 2px narrower. */
+  width:calc(79.4% + 1.588px);
   justify-self:center;
   min-height:100px
 }
