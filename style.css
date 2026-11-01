@@ -694,18 +694,18 @@ body.print-preview-open{overflow:hidden}
 /* v1.33: retain device backup on the folder overview, hide it inside opened folders. */
 .backup-section[hidden]{display:none!important}
 
-/* v1.34: make the current blue folder-shaped cards slightly smaller. */
+/* v1.35: compact blue folder cards; keep the same two-column layout. */
 .folder-grid{
   column-gap:12px;
-  row-gap:17px;
+  row-gap:16px;
   padding-top:10px
 }
 .folder-list-item{
-  min-height:112px
+  min-height:100px
 }
 .folder-list-item .folder-open{
-  min-height:110px;
-  padding:10px 10px 9px
+  min-height:98px;
+  padding:9px 9px 8px
 }
 .folder-list-item::before{
   top:-9px;
