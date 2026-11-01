@@ -519,3 +519,31 @@ body.print-preview-open{overflow:hidden}
 .paper-page[data-label-height="10"] .product-label svg{
   width:100%!important;height:8.5mm!important;max-height:100%;max-width:100%
 }
+
+/* v1.26: centered current-folder title; remove redundant explanatory text. */
+.catalog-location-header{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,2.5fr) minmax(0,1fr);
+  align-items:center;
+  column-gap:6px
+}
+.catalog-location-header .catalog-back{
+  grid-column:1;
+  justify-self:start
+}
+.catalog-location-header .catalog-location-title{
+  grid-column:2;
+  justify-self:center;
+  width:100%;
+  min-width:0;
+  text-align:center
+}
+.catalog-location-header .catalog-location-title h3{
+  margin:0;
+  text-align:center;
+  overflow-wrap:anywhere
+}
+.catalog-location-header .catalog-select-toggle{
+  grid-column:3;
+  justify-self:end
+}

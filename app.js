@@ -272,7 +272,6 @@ function clearFolderGesture(){
   for(const card of grid.querySelectorAll('.folder-drop-target'))card.classList.remove('folder-drop-target');
   gesture.ghost?.remove();
   folderGesture=null;
-  $('#folder-sort-help').textContent='フォルダを長押しして並べ替えできます。';
 }
 function beginFolderDragging(){
   const gesture=folderGesture;
@@ -292,7 +291,6 @@ function beginFolderDragging(){
   ghost.style.transform='translate(0px, 0px)';
   document.body.append(ghost);
   gesture.ghost=ghost;
-  $('#folder-sort-help').textContent='移動先へドラッグして指を離してください。';
 }
 function startFolderPress(event,kind){
   if(folderGesture)return;
@@ -403,7 +401,6 @@ function renderFolders(){
     const arrow=document.createElement('span');arrow.className='folder-chevron';arrow.textContent='›';arrow.setAttribute('aria-hidden','true');
     view.append(glyph,data,arrow);
     if(folder.id!=='all'&&folder.id!=='none'){
-      view.setAttribute('aria-describedby','folder-sort-help');
       view.addEventListener('keydown',event=>{
         if(!event.altKey||!['ArrowLeft','ArrowUp','ArrowRight','ArrowDown'].includes(event.key))return;
         event.preventDefault();
@@ -462,7 +459,6 @@ function renderFolders(){
     }
     list.append(item);
   }
-  $('#folder-count').textContent=folders.length+'フォルダ';
   renderFolderOptions($('#folder-select'));
   renderFolderOptions($('#bulk-folder-target'));
 }
@@ -568,20 +564,12 @@ function reorderProduct(source,target,folderId,displayed){
  renderCatalog();
  return true;
 }
-function productSortHint(){
- const el=$('#product-sort-help');
- if(productGesture?.dragging)el.textContent='移動先へドラッグして指を離してください。';
- else if(activeFolder==='all')el.textContent='フォルダを開くと、商品を長押しして並べ替えできます。';
- else if(catalogSelectionMode)el.textContent='複数選択中は並べ替えできません。';
- else if($('#catalog-search').value.trim()||$('#catalog-tag-filter').value!=='all')el.textContent='検索・タグの絞り込みを解除すると並べ替えできます。';
- else el.textContent='商品を長押しして並べ替えできます。';
-}
 function clearProductGesture(){
  const g=productGesture;if(!g)return;
  clearTimeout(g.timer);g.source.classList.remove('product-is-dragging');
  const list=$('#catalog-items');list.classList.remove('product-sort-active');
  for(const el of list.querySelectorAll('.product-drop-target'))el.classList.remove('product-drop-target');
- g.ghost?.remove();productGesture=null;productSortHint();
+ g.ghost?.remove();productGesture=null;
 }
 function beginProductDrag(){
  const g=productGesture;
@@ -593,7 +581,7 @@ function beginProductDrag(){
  ghost.style.left=rect.left+'px';ghost.style.top=rect.top+'px';
  ghost.style.width=rect.width+'px';ghost.style.height=rect.height+'px';
  ghost.style.transform='translate(0px,0px)';
- document.body.append(ghost);g.ghost=ghost;productSortHint();
+ document.body.append(ghost);g.ghost=ghost;
 }
 function startProductPress(e,kind){
  if(productGesture||!canSortProducts()||visibleCatalogIds.length<2)return;
@@ -693,8 +681,6 @@ function renderCatalog(){
   visibleCatalogIds=filtered.map(x=>x.id);
   const currentName=activeFolder==='all'?'すべての商品':activeFolder==='none'?'未分類':folderName(activeFolder);
   $('#catalog-current-name').textContent=currentName;
-  $('#catalog-current-count').textContent=filtered.length+'商品';
-  $('#catalog-results').textContent='表示 '+filtered.length+'件 / 全'+catalog.length+'件';
   $('#catalog-browser').dataset.opened=String(catalogFolderOpened);
   $('#catalog-content').dataset.selecting=String(catalogSelectionMode);
   const selectButton=$('#catalog-select-mode');
@@ -703,7 +689,6 @@ function renderCatalog(){
   $('#catalog-bulk').hidden=!catalogSelectionMode;
   renderFolders();
   updateBulkSelection();
-  productSortHint();
   const target=$('#catalog-items');target.replaceChildren();
   if(!filtered.length){
     const empty=document.createElement('div');empty.className='empty-list';
@@ -742,7 +727,6 @@ function renderCatalog(){
     meta.append(date);
     const summary=document.createElement('div');summary.className='catalog-summary';
     summary.tabIndex=0;
-    summary.setAttribute('aria-describedby','product-sort-help');
     summary.addEventListener('keydown',event=>{
       if(!event.altKey||!['ArrowUp','ArrowDown'].includes(event.key)||!canSortProducts())return;
       event.preventDefault();

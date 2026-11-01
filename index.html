@@ -85,8 +85,6 @@
           <h3 id="folders-title">フォルダ</h3>
           <button id="folder-add-trigger" type="button" class="folder-add-trigger">＋ 新規作成</button>
         </div>
-        <p id="folder-count" class="folder-list-count">0フォルダ</p>
-        <p id="folder-sort-help" class="folder-sort-help" role="status" aria-live="polite">フォルダを長押しして並べ替えできます。</p>
         <div id="folder-grid" class="folder-grid"></div>
         <form id="folder-create-form" class="folder-create-form" hidden>
           <input id="folder-name" maxlength="30" autocomplete="off" placeholder="フォルダ名" aria-label="新しいフォルダ名" required>
@@ -101,7 +99,6 @@
           <button id="catalog-back" type="button" class="catalog-back">‹ フォルダ</button>
           <div class="catalog-location-title">
             <h3 id="catalog-current-name">すべての商品</h3>
-            <span id="catalog-current-count">0商品</span>
           </div>
           <button id="catalog-select-mode" type="button" class="catalog-select-toggle" aria-pressed="false">選択</button>
         </div>
@@ -117,8 +114,6 @@
             <option value="code">バーコード順</option>
           </select></div>
         </div>
-        <p id="catalog-results" class="catalog-results" role="status" aria-live="polite"></p>
-        <p id="product-sort-help" class="product-sort-help" role="status" aria-live="polite">商品を長押しして並べ替えできます。</p>
         <div id="catalog-bulk" class="catalog-bulk" aria-label="商品をまとめて移動" hidden>
           <span id="bulk-count">0件選択中</span>
           <button id="bulk-select-visible" type="button" class="button ghost">表示中を選択</button>
@@ -136,7 +131,6 @@
         <button id="backup-export" type="button" class="button primary">バックアップを保存</button>
         <label class="button secondary backup-file-label">バックアップから復元<input id="backup-file" type="file" accept=".json,application/json" hidden></label>
       </div>
-      <p class="backup-description">商品・フォルダ・タグ・登録日・印刷リストをJSONファイルに保存します。復元時は既存データを残して追加します。</p>
       <p id="backup-status" class="backup-status" role="status" aria-live="polite" hidden></p>
     </section>
   </section>
