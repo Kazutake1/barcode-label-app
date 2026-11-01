@@ -559,3 +559,8 @@ body.print-preview-open{overflow:hidden}
   padding-top:10px;
   padding-bottom:8px
 }
+
+/* v1.30: slightly narrow the gap without moving aligned top/bottom edges. */
+.folder-list-item .folder-card-controls button{
+  min-height:44px
+}
