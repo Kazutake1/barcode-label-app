@@ -1,5 +1,5 @@
 // First-party resources only; camera decoder CDN script is not cached.
-const CACHE="barcode-label-local-v38";
+const CACHE="barcode-label-local-v39";
 const FILES=["./","./index.html","./style.css","./app.js","./manifest.webmanifest","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES.map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting())));
 self.addEventListener("activate",e=>e.waitUntil(Promise.all([

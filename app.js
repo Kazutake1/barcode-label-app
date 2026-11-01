@@ -423,40 +423,6 @@ function renderFolders(){
       openCatalogFolder(folder.id);
     });
     item.append(view);
-    if(folder.id!=='all'&&folder.id!=='none'){
-      const controls=document.createElement('div');
-      controls.className='folder-card-controls';
-      const edit=document.createElement('button');
-      edit.type='button';
-      edit.className='folder-card-edit';
-      edit.textContent='編集';
-      edit.setAttribute('aria-label',folder.name+'の名前を編集');
-      edit.addEventListener('click',()=>{
-        const next=window.prompt('フォルダ名を編集',folder.name);
-        if(next===null)return;
-        try{
-          renameFolder(folder.id,next);
-          toast('フォルダ名を変更しました。');
-        }catch(error){toast(error.message,'error');}
-      });
-      const del=document.createElement('button');
-      del.type='button';
-      del.className='folder-card-delete';
-      del.textContent='削除';
-      del.setAttribute('aria-label',folder.name+'を削除');
-      del.addEventListener('click',()=>{
-        try{
-          if(deleteFolder(folder.id)){
-            catalogSelectionMode=false;
-            selectedCatalogIds.clear();
-            renderCatalog();
-            toast('フォルダを削除しました。中の商品は未分類に移動しました。');
-          }
-        }catch(error){toast(error.message,'error');}
-      });
-      controls.append(edit,del);
-      item.append(controls);
-    }
     list.append(item);
   }
   renderFolderOptions($('#folder-select'));
@@ -681,6 +647,12 @@ function renderCatalog(){
   visibleCatalogIds=filtered.map(x=>x.id);
   const currentName=activeFolder==='all'?'すべての商品':activeFolder==='none'?'未分類':folderName(activeFolder);
   $('#catalog-current-name').textContent=currentName;
+  const editableFolder=catalogFolderOpened?folders.find(folder=>folder.id===activeFolder):null;
+  $('#folder-page-actions').hidden=!editableFolder;
+  if(editableFolder){
+    $('#folder-page-edit').setAttribute('aria-label',editableFolder.name+'の名前を編集');
+    $('#folder-page-delete').setAttribute('aria-label',editableFolder.name+'を削除');
+  }
   $('#catalog-browser').dataset.opened=String(catalogFolderOpened);
   $('#catalog-content').dataset.selecting=String(catalogSelectionMode);
   const selectButton=$('#catalog-select-mode');
@@ -1282,6 +1254,28 @@ $('#catalog-back').addEventListener('click',()=>{
   selectedCatalogIds.clear();
   renderCatalog();
   window.scrollTo({top:0,behavior:'auto'});
+});
+$('#folder-page-edit').addEventListener('click',()=>{
+  const folder=catalogFolderOpened?folders.find(f=>f.id===activeFolder):null;
+  if(!folder)return;
+  const next=window.prompt('フォルダ名を編集',folder.name);
+  if(next===null)return;
+  try{
+    renameFolder(folder.id,next);
+    toast('フォルダ名を変更しました。');
+  }catch(error){toast(error.message,'error');}
+});
+$('#folder-page-delete').addEventListener('click',()=>{
+  const folder=catalogFolderOpened?folders.find(f=>f.id===activeFolder):null;
+  if(!folder)return;
+  try{
+    if(deleteFolder(folder.id)){
+      catalogSelectionMode=false;
+      selectedCatalogIds.clear();
+      renderCatalog();
+      toast('フォルダを削除しました。中の商品は未分類に移動しました。');
+    }
+  }catch(error){toast(error.message,'error');}
 });
 $('#catalog-select-mode').addEventListener('click',()=>{
   catalogSelectionMode=!catalogSelectionMode;
