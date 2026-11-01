@@ -548,12 +548,14 @@ body.print-preview-open{overflow:hidden}
   justify-self:end
 }
 
-/* v1.28: align the bottom edges of product count and Delete button. */
+/* v1.29: align icon/Edit top edges and product-count/Delete bottom edges. */
 .folder-list-item .folder-card-controls{
-  align-self:flex-end;
-  justify-content:flex-end;
+  align-self:stretch;
+  justify-content:space-between;
+  margin-top:10px;
   margin-bottom:8px
 }
 .folder-list-item .folder-open{
+  padding-top:10px;
   padding-bottom:8px
 }
