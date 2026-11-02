@@ -856,6 +856,8 @@ function renderCatalog(){
 
 const BACKUP_FORMAT = 'barcode-label-app-backup';
 const BACKUP_VERSION = 1;
+const ENCRYPTED_BACKUP_FORMAT = 'barcode-label-app-backup-encrypted';
+const BACKUP_KDF_ITERATIONS = 250000;
 const BACKUP_FILE_LIMIT = 2 * 1024 * 1024;
 
 function backupStatus(message,isError=false){
@@ -879,13 +881,59 @@ async function makeBackupDocument(){
     }))
   };
 }
+function toBase64(bytes){
+  let text='';
+  for(let i=0;i<bytes.length;i+=8192)text+=String.fromCharCode(...bytes.subarray(i,i+8192));
+  return btoa(text);
+}
+function fromBase64(text,limit){
+  if(typeof text!=='string'||text.length>Math.ceil(limit*4/3)+4||!/^[A-Za-z0-9+/]*={0,2}$/.test(text))
+    throw Error('暗号化バックアップの形式が不正です。');
+  try{
+    const decoded=atob(text);
+    if(decoded.length>limit)throw Error('ファイルが大きすぎます。');
+    return Uint8Array.from(decoded,char=>char.charCodeAt(0));
+  }catch{throw Error('暗号化バックアップを読み取れません。');}
+}
+async function backupKey(password,salt,usage){
+  if(!globalThis.crypto?.subtle)throw Error('暗号化にはHTTPSでの利用が必要です。');
+  const passwordKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:BACKUP_KDF_ITERATIONS,hash:'SHA-256'},passwordKey,
+    {name:'AES-GCM',length:256},false,[usage]);
+}
+async function encryptBackup(data,password){
+  if(password.length<8||password.length>128)throw Error('暗号化パスワードは8〜128文字で入力してください。');
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await backupKey(password,salt,'encrypt');
+  const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(data)));
+  return {format:ENCRYPTED_BACKUP_FORMAT,version:1,kdf:'PBKDF2-SHA256',
+    iterations:BACKUP_KDF_ITERATIONS,salt:toBase64(salt),iv:toBase64(iv),
+    ciphertext:toBase64(new Uint8Array(encrypted))};
+}
+async function decryptBackup(envelope,password){
+  if(!envelope||envelope.format!==ENCRYPTED_BACKUP_FORMAT||envelope.version!==1
+    ||envelope.kdf!=='PBKDF2-SHA256'||envelope.iterations!==BACKUP_KDF_ITERATIONS)
+    throw Error('対応していない暗号化バックアップ形式です。');
+  const salt=fromBase64(envelope.salt,16),iv=fromBase64(envelope.iv,12);
+  if(salt.length!==16||iv.length!==12)throw Error('暗号化バックアップの形式が不正です。');
+  const payload=fromBase64(envelope.ciphertext,BACKUP_FILE_LIMIT);
+  const key=await backupKey(password,salt,'decrypt');
+  try{
+    const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,payload);
+    return JSON.parse(new TextDecoder().decode(plain));
+  }catch{throw Error('パスワードが違うか、バックアップが破損しています。');}
+}
 async function exportBackup(){
   if(!catalog.length&&!records.length&&!folders.length){
     backupStatus('保存されている商品・印刷リストがありません。',true);return;
   }
   let documentData;
-  try{documentData=await makeBackupDocument();}
-  catch{backupStatus('バックアップを作成できませんでした。',true);return;}
+  const password=$('#backup-password').value;
+  try{
+    documentData=await makeBackupDocument();
+    if(password)documentData=await encryptBackup(documentData,password);
+  }catch(error){backupStatus(error?.message||'バックアップを作成できませんでした。',true);return;}
+  $('#backup-password').value='';
   const blob=new Blob([JSON.stringify(documentData,null,2)],{type:'application/json'});
   const dateParts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
   const localDay=[dateParts.year,dateParts.month,dateParts.day].join('-');
@@ -1022,7 +1070,14 @@ async function restoreBackup(file){
   try{
     if(!file.name?.toLowerCase().endsWith('.json'))throw Error('JSONファイル（.json）を選択してください。');
     if(file.size>BACKUP_FILE_LIMIT)throw Error('ファイルが大きすぎます（上限2MB）。');
-    const raw=JSON.parse((await file.text()).replace(/^\uFEFF/,''));
+    let raw=JSON.parse((await file.text()).replace(/^\uFEFF/,''));
+    if(raw?.format===ENCRYPTED_BACKUP_FORMAT){
+      const password=$('#backup-password').value||window.prompt('バックアップの暗号化パスワードを入力してください。');
+      if(password===null){backupStatus('復元をキャンセルしました。');return;}
+      if(!password)throw Error('暗号化パスワードを入力してください。');
+      raw=await decryptBackup(raw,password);
+    }
+    $('#backup-password').value='';
     const parsed=validateBackupDocument(raw);
     if(!parsed.products.length&&!parsed.printItems.length&&!parsed.folders.length){
       backupStatus('バックアップには商品情報が入っていません。',true);return;
@@ -1297,6 +1352,7 @@ function loadDecoder(){
   if(decoderLoading)return decoderLoading;
   decoderLoading=new Promise((resolve,reject)=>{
     const script=document.createElement('script');script.src=SCAN_LIBRARY_URL;script.async=true;
+    script.crossOrigin='anonymous';script.referrerPolicy='no-referrer';
     script.onload=()=>window.ZXingBrowser?.BrowserMultiFormatReader?resolve():reject(new Error('読み取り機能の初期化に失敗しました。'));
     script.onerror=()=>reject(new Error('読み取り機能を読み込めません。初回はインターネット接続が必要です。'));
     document.head.append(script);
