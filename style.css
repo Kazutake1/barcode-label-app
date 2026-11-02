@@ -49,10 +49,9 @@ body.print-preview-open{overflow:hidden}
 .print-preview-dialog{width:100%;max-width:680px;background:#f3f5f9;color:#18212f;border-radius:16px;padding:18px 13px 23px;box-shadow:0 16px 45px #0004}
 .print-preview-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 .print-preview-heading h2{font-size:20px;margin:0}
-.print-preview-settings{display:flex;align-items:center;gap:10px}
-.print-preview-settings label{margin:0!important;font-size:13px}
-.print-preview-settings select{width:155px;height:42px;padding:8px;font-size:14px}
-.print-preview-meta{font-size:12px;color:#657386;margin:10px 0 15px}
+.print-preview-settings{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,.8fr);align-items:center;gap:10px;margin-bottom:15px}
+.print-preview-settings label{margin:0!important;font-size:13px;white-space:nowrap}
+.print-preview-settings select{box-sizing:border-box;width:100%;min-width:0;max-width:100%;height:42px;padding:8px 18px 8px 7px;font-size:14px}
 .print-preview-pages{display:grid;gap:20px;justify-items:center}
 .print-preview-page{width:100%;max-width:560px;aspect-ratio:210/297;background:#fff;padding:3.8%;box-shadow:0 5px 18px #0002}
 .print-preview-page.b5{aspect-ratio:182/257;padding:3.85%}
@@ -485,14 +484,12 @@ body.print-preview-open{overflow:hidden}
 /* v1.23: selectable 5mm label-height increments in both print toolbars. */
 .print-settings{row-gap:9px}
 .print-settings #label-height{width:105px;flex:0 0 auto}
-.print-preview-settings{flex-wrap:wrap;row-gap:8px}
-.print-preview-settings #preview-label-height{width:105px}
 @media(max-width:390px){
   .print-settings{align-items:center}
   .print-settings #label-height{width:100px}
-  .print-preview-settings{gap:6px}
-  .print-preview-settings #preview-paper{width:125px}
-  .print-preview-settings #preview-label-height{width:95px}
+  .print-preview-settings{gap:5px;grid-template-columns:auto minmax(0,1fr) auto minmax(0,.75fr)}
+  .print-preview-settings label{font-size:11px}
+  .print-preview-settings select{font-size:12px;padding:6px 13px 6px 4px}
 }
 
 /* v1.24: miniature barcode labels; reduce inner padding at 5/10mm.
