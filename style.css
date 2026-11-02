@@ -772,3 +772,9 @@ input[type="checkbox"]:not(.item-check)::after{
 }
 input[type="checkbox"]:not(.item-check):checked::after{visibility:visible}
 input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
+
+/* v1.40: keep breathing room between the print-list actions and the list.
+   Spacing remains even when optional helper text is absent. */
+.items-panel .items-header{
+  margin-bottom:16px
+}
