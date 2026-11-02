@@ -135,7 +135,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v64'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v65'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
@@ -221,8 +221,8 @@ test('nominal bar height, quiet zones and complete human-readable digits',()=>{
   }
  }
  const sizes=compile(segment('function validLabelHeight(','function readLabelHeight('),'validLabelHeight');
- for(const n of [5,10,15,20,25])assert.equal(sizes.validLabelHeight(n),false);
- for(const n of [30,35,40,45,50])assert.equal(sizes.validLabelHeight(n),true);
+ for(const n of [5,10,15,20,25,30,35,40,45,50])assert.equal(sizes.validLabelHeight(n),true);
+ for(const n of [0,6,55])assert.equal(sizes.validLabelHeight(n),false);
 });
 test('scan result format is enforced in addition to numeric validation',()=>{
  let updates=0,stops=0;
@@ -244,8 +244,8 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=64',scope).href,Buffer.from(app)],
-  [new URL('./style.css?v=64',scope).href,Buffer.from(css)],
+  [new URL('./app.js?v=65',scope).href,Buffer.from(app)],
+  [new URL('./style.css?v=65',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
  const fallback=new Map();
@@ -275,7 +275,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=64'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=65'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -287,15 +287,27 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=64','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=65','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=64',app],['style.css?v=64',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=65',app],['style.css?v=65',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
+});
+
+test('all ten label heights remain selectable in both print toolbars',()=>{
+ for(const id of ['label-height','preview-label-height']){
+  const select=html.match(new RegExp('<select id="'+id+'">([\\s\\S]*?)</select>'))[1];
+  const values=[...select.matchAll(/value="(\d+)"/g)].map(x=>Number(x[1]));
+  assert.deepEqual(values,[5,10,15,20,25,30,35,40,45,50]);
+ }
+ const compact=barcode.createBarcodeSvg('4901234567894',true,true);
+ assert.equal(compact.attributes.preserveAspectRatio,'none');
+ assert.ok(!compact.children.some(x=>x.tag==='text'));
+ assert.equal(barcode.createBarcodeSvg('4901234567894',false,true).attributes.height,'17.82mm');
 });

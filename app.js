@@ -88,16 +88,17 @@ function svgElem(name,attrs={}) {
   for (const [key,value] of Object.entries(attrs))element.setAttribute(key,String(value));
   return element;
 }
-function createBarcodeSvg(code) {
+function createBarcodeSvg(code,compact=false,miniature=false) {
   const info=codeInfo(code);
   if(!info.ok)throw Error(info.error);
   code=info.code;
   const bits=barcodeBits(code),isSmall=code.length===8,isUPC=code.length===12;
   const qleft=isSmall?7:isUPC?9:11,qright=isUPC?9:7;
-  const modules=qleft+bits.length+qright,barHeight=22.85/.33,viewHeight=81;
+  const modules=qleft+bits.length+qright;
+  const small=miniature||compact,barHeight=small?40:22.85/.33,viewHeight=compact?44:small?54:81;
   const svg=svgElem('svg',{xmlns:'http://www.w3.org/2000/svg',
     viewBox:`0 0 ${modules} ${viewHeight}`,width:`${(modules*.33).toFixed(2)}mm`,
-    height:'26.73mm',role:'img','aria-label':`バーコード ${code}`});
+    height:small?'17.82mm':'26.73mm',...(compact?{preserveAspectRatio:'none'}:{}),role:'img','aria-label':`バーコード ${code}`});
   svg.append(svgElem('rect',{x:0,y:0,width:modules,height:viewHeight,fill:'#ffffff'}));
   let i=0;
   while(i<bits.length){
@@ -107,11 +108,13 @@ function createBarcodeSvg(code) {
     const guard=first<3||first>=bits.length-3
       ||(first>=(bits.length-5)/2&&first<(bits.length+5)/2);
     svg.append(svgElem('rect',{x:qleft+first,y:0,width:i-first,
-      height:guard?barHeight+5:barHeight,fill:'#000000'}));
+      height:guard?barHeight+(small?4:5):barHeight,fill:'#000000'}));
   }
-  const text=svgElem('text',{x:modules/2,y:79,'text-anchor':'middle','font-size':'8.3',
+  if(!compact){
+  const text=svgElem('text',{x:modules/2,y:small?52.1:79,'text-anchor':'middle','font-size':'8.3',
     'font-family':'Arial, sans-serif','font-weight':'500',fill:'#000000','letter-spacing':'.45'});
   text.textContent=code;svg.append(text);
+  }
   return svg;
 }
 // UTF-16 indices match selectionStart from the input field.
@@ -178,7 +181,7 @@ function createLabel({code,name,nameBreak},compact=false){
   }else span.textContent=text;
   nameCell.append(span);
   const barcodeCell=document.createElement('div');barcodeCell.className='barcode-cell';
-  barcodeCell.append(createBarcodeSvg(code,compact));
+  barcodeCell.append(createBarcodeSvg(code,compact,labelHeightMm<30));
   body.append(nameCell,barcodeCell);
   container.append(body);
   return container;
@@ -1230,13 +1233,13 @@ function printFeedback(message){
 }
 function validLabelHeight(value){
   const mm=Number(value);
-  return Number.isInteger(mm)&&mm>=30&&mm<=50&&mm%5===0;
+  return Number.isInteger(mm)&&mm>=5&&mm<=50&&mm%5===0;
 }
 function readLabelHeight(){
   try{
     const raw=localStorage.getItem(LABEL_HEIGHT_KEY);
-    return raw!==null&&validLabelHeight(raw)?Number(raw):30;
-  }catch{return 30;}
+    return raw!==null&&validLabelHeight(raw)?Number(raw):20;
+  }catch{return 20;}
 }
 function setLabelHeight(value){
   if(!validLabelHeight(value))return;
@@ -1291,7 +1294,7 @@ function buildPrintSheets(){
     page.dataset.labelHeight=String(labelHeightMm);
     const grid=document.createElement('div');
     grid.className='paper-label-grid';
-    for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item));
+    for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item,labelHeightMm<=10));
     page.append(grid);
     target.append(page);
 
@@ -1308,6 +1311,11 @@ function buildPrintSheets(){
   $('#print-guidance').textContent=standalone
     ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いてください。プリンターの用紙サイズはアプリと一致させてください。'
     : '「印刷画面を開く」の後、プリンターの用紙サイズを上で選んだサイズに合わせ、倍率を100%にしてください。';
+  if(labelHeightMm<=10){
+    $('#print-guidance').textContent=labelHeightMm+'mmはバーコード下の数字を省略しています。商品名が読みにくくなる、またはバーコードがスキャンできない可能性があります。必ず実寸で試し刷りし、レジで読み取れることをご確認ください。 '+$('#print-guidance').textContent;
+  }else if(labelHeightMm===15){
+    $('#print-guidance').textContent='15mmではバーコードが小さくなり、読み取りにくい場合があります。試し刷りしてご確認ください。 '+$('#print-guidance').textContent;
+  }
   if(flat.length>perPage){
     $('#print-guidance').textContent=`印刷枚数の合計が${flat.length}枚のため${Math.ceil(flat.length/perPage)}ページになります。1ページに収めたい場合は、各商品の「印刷枚数」を減らしてください。`+' '+$('#print-guidance').textContent;
   }
