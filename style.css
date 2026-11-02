@@ -806,8 +806,7 @@ input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
 }
 @media print{.catalog-barcode{display:none!important}}
 
-/* Nominal 0.33mm modules and 22.85mm bars need at least a 30mm label.
-   Keep the complete symbol, including digits and quiet zones, in both views. */
+/* Full-height symbols remain available at 30mm and above. */
 .preview-stage .product-label svg{width:auto;height:26.73mm;max-width:100%}
 .print-preview-overlay{
   padding-top:max(18px,env(safe-area-inset-top));
@@ -816,3 +815,10 @@ input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
   padding-left:max(10px,env(safe-area-inset-left))
 }
 .print-preview-actions{padding-bottom:max(10px,env(safe-area-inset-bottom))}
+
+/* Preserve the original small-label layout; these sizes are user-selectable. */
+.paper-page[data-label-height="15"] .product-label svg,
+.paper-page[data-label-height="20"] .product-label svg,
+.paper-page[data-label-height="25"] .product-label svg{
+  height:17.82mm!important
+}
