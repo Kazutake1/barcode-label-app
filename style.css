@@ -739,3 +739,36 @@ body.print-preview-open{overflow:hidden}
   .print-sheet .paper-page .product-label.has-photo .name-cell{display:flex;flex-direction:row}
   .print-sheet .paper-page .product-label.has-photo .label-product-photo{width:43%;max-width:43%;height:90%}
 }
+
+/* v1.39: consistent checkbox appearance on iOS/iPadOS Safari (light and dark).
+   Apply to every checkbox, including the optional product-photo print controls. */
+input[type="checkbox"]{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  color-scheme:light!important;
+  background-color:#fff!important;
+  border:2px solid #b8c5d6!important;
+  border-radius:5px!important;
+  box-shadow:none!important;
+  padding:0;
+  display:inline-grid;
+  place-items:center;
+  flex-shrink:0;
+  vertical-align:middle;
+  cursor:pointer
+}
+input[type="checkbox"]:checked{
+  background-color:#1769d4!important;
+  border-color:#1769d4!important
+}
+input[type="checkbox"]:not(.item-check)::after{
+  content:"";
+  width:5px;
+  height:10px;
+  border-right:2px solid #fff;
+  border-bottom:2px solid #fff;
+  transform:translateY(-1px) rotate(45deg);
+  visibility:hidden
+}
+input[type="checkbox"]:not(.item-check):checked::after{visibility:visible}
+input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
