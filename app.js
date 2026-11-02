@@ -99,13 +99,43 @@ function createLabel({code,name},compact=false){
   const container=document.createElement('div');container.className='product-label';
   const body=document.createElement('div');body.className='label-body';
   const nameCell=document.createElement('div');nameCell.className='name-cell';
-  nameCell.textContent=name||'商品名';
+  const nameText=document.createElement('span');
+  nameText.className='label-name-text';
+  nameText.textContent=name||'商品名';
+  nameCell.append(nameText);
   const barcodeCell=document.createElement('div');barcodeCell.className='barcode-cell';
   barcodeCell.append(createBarcodeSvg(code,compact));
   body.append(nameCell,barcodeCell);
 
   container.append(body);
   return container;
+}
+
+// The printed label and its true-size preview use the same measured font size.
+// Keeping the full original name in a span avoids truncation or line wrapping.
+const nameMeasureContext=document.createElement('canvas').getContext('2d');
+function fitSingleLineName(cell){
+  const span=cell?.querySelector('.label-name-text');
+  if(!span||!nameMeasureContext)return null;
+  const style=getComputedStyle(cell);
+  const available=cell.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-2;
+  const baseSize=parseFloat(style.fontSize);
+  if(!(available>0)||!(baseSize>0))return null;
+  nameMeasureContext.font=`${style.fontStyle} ${style.fontWeight} ${baseSize}px ${style.fontFamily}`;
+  const characters=Array.from(span.textContent).length;
+  const tracking=parseFloat(style.letterSpacing)||0;
+  const textWidth=nameMeasureContext.measureText(span.textContent).width+tracking*Math.max(0,characters-1);
+  const fitted=Math.min(baseSize,baseSize*Math.min(1,available/Math.max(1,textWidth))*0.98);
+  span.style.fontSize=Math.max(0.5,fitted).toFixed(2)+'px';
+  return span.style.fontSize;
+}
+function fitPrintNames(){
+  // Print sheets are display:none on screen; measure their identical visible clones.
+  const originals=$('#print-sheet').querySelectorAll('.label-name-text');
+  document.querySelectorAll('#print-preview-pages .label-name-text').forEach((span,index)=>{
+    const size=fitSingleLineName(span.parentElement);
+    if(size&&originals[index])originals[index].style.fontSize=size;
+  });
 }
 
 function readRecords(){
@@ -499,6 +529,7 @@ function showPage(page){
   const saved=page==='saved';
   $('#create-page').hidden=saved;
   $('#catalog-page').hidden=!saved;
+  if(!saved)fitSingleLineName($('#preview .name-cell'));
   $('#nav-create').setAttribute('aria-current',saved?'false':'page');
   $('#nav-saved').setAttribute('aria-current',saved?'page':'false');
   if(saved)stopCamera();
@@ -982,6 +1013,7 @@ function updatePreview(){
     status.textContent=`${info.type} ・ チェックデジット確認済み`;
     status.className='hint valid';
     target.append(createLabel({code:info.code,name:$('#name').value.trim()}));
+    fitSingleLineName(target.querySelector('.name-cell'));
     $('#print-one').disabled=!$('#name').value.trim();
   }else{
     status.textContent=info.error==='番号を入力してください。'?'JAN-13（13桁）、JAN-8（8桁）、UPC-A（12桁）に対応':info.error;
@@ -1109,6 +1141,7 @@ function buildPrintSheets(){
   scalePreviewPages();
 }
 function scalePreviewPages(){
+  fitPrintNames();
   for(const viewport of document.querySelectorAll('.preview-page-viewport')){
     const page=viewport.firstElementChild;
     if(!page)continue;
@@ -1131,6 +1164,7 @@ function confirmPrint(){
   if(!stagedPrintItems.length)return;
   // Keep print inside a direct user click; delayed callbacks can be blocked by Safari.
   try{
+    fitPrintNames();
     void $('#print-sheet').offsetHeight;
     window.print();
   }catch(err){
