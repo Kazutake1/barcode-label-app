@@ -725,6 +725,20 @@ body.print-preview-open{overflow:hidden}
   flex:0 1 auto
 }
 
+/* v1.43: up to two printed lines, with optional explicit line break. */
+.product-label .label-name-text{
+  width:100%;max-width:100%;min-width:0;
+  white-space:normal;word-break:normal;overflow-wrap:anywhere;
+  line-height:1.2
+}
+.product-label[data-single-line="true"] .label-name-text{
+  white-space:nowrap;overflow-wrap:normal
+}
+.name-break-tools{display:flex;flex-wrap:wrap;gap:9px;margin:10px 0 0}
+.name-break-tools .button{font-size:12px;min-height:38px;padding:8px 12px}
+.name-break-tools [hidden]{display:none!important}
+.name-break-status{font-size:11px;line-height:1.5;color:#63758a;margin:9px 0 14px;overflow-wrap:anywhere}
+
 /* v1.39: consistent checkbox appearance on iOS/iPadOS Safari (light and dark). */
 input[type="checkbox"]{
   -webkit-appearance:none!important;
