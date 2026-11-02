@@ -778,3 +778,62 @@ input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
 .items-panel .items-header{
   margin-bottom:16px
 }
+
+
+/* v1.41: offline product-photo editor. Maintain consistent card/control spacing. */
+.photo-actions #product-photo-edit[hidden]{display:none!important}
+.photo-edit-overlay[hidden]{display:none!important}
+.photo-edit-overlay{
+  position:fixed;inset:0;z-index:10050;
+  padding:18px 12px max(20px,env(safe-area-inset-bottom));
+  background:rgba(16,25,40,.70);
+  display:flex;justify-content:center;align-items:flex-start;
+  overflow:auto;overscroll-behavior:contain
+}
+body.photo-editing{overflow:hidden}
+.photo-edit-dialog{
+  width:min(100%,500px);border-radius:18px;padding:18px;
+  background:#fff;color:#172638;box-shadow:0 15px 50px #0004
+}
+.photo-edit-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
+.photo-edit-heading h2{font-size:18px;font-weight:750;margin:0}
+.photo-edit-heading .button{flex:0 0 auto}
+.photo-edit-photo-area{margin-bottom:18px}
+.photo-edit-canvas-shell{
+  display:flex;justify-content:center;align-items:center;
+  border-radius:12px;padding:10px;background:#edf2f8
+}
+#photo-edit-canvas{
+  display:block;width:min(100%,320px);height:auto;aspect-ratio:1;
+  background:#fff;border:2px solid #3977c4;touch-action:none;
+  cursor:grab;user-select:none;-webkit-user-select:none
+}
+#photo-edit-canvas:active{cursor:grabbing}
+.photo-edit-instruction,.photo-edit-caption,.photo-edit-status{
+  font-size:12px;line-height:1.65;color:#5e7086;margin:10px 0 0
+}
+.photo-edit-tools{display:grid;gap:8px}
+.photo-edit-tools>label{
+  display:flex!important;justify-content:space-between;align-items:center;
+  margin:7px 0 0!important;font-size:13px!important
+}
+.photo-edit-tools input[type=range]{
+  width:100%;height:32px;margin:0;padding:0;border:0;
+  background:transparent;accent-color:#1769d4;
+  -webkit-appearance:auto;appearance:auto
+}
+.photo-edit-tools .photo-edit-buttons{display:flex;flex-wrap:wrap;gap:9px;margin:7px 0}
+.photo-edit-tools .photo-edit-buttons .button{min-height:42px;flex:1 1 auto;font-size:12px}
+.photo-edit-tools #photo-edit-white[aria-pressed="true"]{color:#fff;background:#1769d4}
+.photo-edit-tools .photo-edit-caption{margin:0 0 5px}
+.photo-edit-status{min-height:18px;margin:8px 0 14px}
+.photo-edit-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
+.photo-edit-footer #photo-edit-apply{width:100%}
+@media(max-width:480px){
+  .photo-edit-overlay{padding:8px 8px max(18px,env(safe-area-inset-bottom))}
+  .photo-edit-dialog{border-radius:13px;padding:14px}
+  .photo-edit-heading{gap:10px}
+  .photo-edit-heading h2{font-size:16px}
+  .photo-edit-canvas-shell{padding:8px}
+  .photo-edit-tools .photo-edit-buttons{gap:7px}
+}

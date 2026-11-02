@@ -145,6 +145,7 @@ function showEditorPhoto(){
   const exists=PhotoStore.valid(image);
   $('#product-photo-current').hidden=!exists;
   $('#product-photo-remove').hidden=!exists;
+  $('#product-photo-edit').hidden=!exists;
   if(exists)$('#product-photo-thumb').src=image;
   else $('#product-photo-thumb').removeAttribute('src');
   $('#product-photo-status').textContent=exists?'写真はこの端末内に保存されます。':'写真は未登録です。';
@@ -154,7 +155,7 @@ async function loadEditorPhoto(id){
   const token=++photoEditToken;
   pendingPhoto=undefined;currentPhotoData=null;
   $('#product-photo-status').textContent='写真を読み込み中…';
-  $('#product-photo-current').hidden=true;$('#product-photo-remove').hidden=true;
+  $('#product-photo-current').hidden=true;$('#product-photo-remove').hidden=true;$('#product-photo-edit').hidden=true;
   try{
     const image=await PhotoStore.get(id);
     if(token!==photoEditToken)return;
@@ -163,46 +164,29 @@ async function loadEditorPhoto(id){
     if(token===photoEditToken)$('#product-photo-status').textContent='写真を読み込めませんでした。';
   }
 }
-function reduceProductPhoto(file){
-  if(!file||!file.type.startsWith('image/'))return Promise.reject(Error('画像ファイルを選択してください。'));
-  if(file.size>18*1024*1024)return Promise.reject(Error('18MB以下の写真を選択してください。'));
-  return new Promise((resolve,reject)=>{
-    const url=URL.createObjectURL(file),img=new Image();
-    img.onload=()=>{
-      URL.revokeObjectURL(url);
-      try{
-        const canvas=document.createElement('canvas');
-        canvas.width=320;canvas.height=320;
-        const c=canvas.getContext('2d');
-        if(!c||!img.naturalWidth||!img.naturalHeight)throw Error('写真を変換できませんでした。');
-        c.fillStyle='#fff';c.fillRect(0,0,320,320);
-        const factor=Math.min(320/img.naturalWidth,320/img.naturalHeight);
-        const w=Math.round(img.naturalWidth*factor),h=Math.round(img.naturalHeight*factor);
-        c.drawImage(img,(320-w)/2,(320-h)/2,w,h);
-        let data=canvas.toDataURL('image/jpeg',0.68);
-        if(!PhotoStore.valid(data)){
-          const small=document.createElement('canvas');small.width=240;small.height=240;
-          const sc=small.getContext('2d');sc.fillStyle='#fff';sc.fillRect(0,0,240,240);
-          sc.drawImage(canvas,0,0,240,240);data=small.toDataURL('image/jpeg',0.58);
-        }
-        if(!PhotoStore.valid(data))throw Error('写真の容量が大きすぎます。');
-        resolve(data);
-      }catch(e){reject(e);}
-    };
-    img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('写真を読み込めませんでした。'));};
-    img.src=url;
-  });
-}
 async function chooseProductPhoto(file){
   if(!file)return;
   const token=photoEditToken;
-  $('#product-photo-status').textContent='写真を縮小しています…';
+  $('#product-photo-status').textContent='写真を開いています…';
   try{
-    const data=await reduceProductPhoto(file);
+    const data=await window.BarcodePhotoEditor.open(file);
     if(token!==photoEditToken)return;
-    pendingPhoto=data;showEditorPhoto();
-  }catch(e){
-    if(token===photoEditToken)$('#product-photo-status').textContent=e.message||'写真を処理できませんでした。';
+    if(data)pendingPhoto=data;
+    showEditorPhoto(); // Cancelling leaves the existing photo unchanged.
+  }catch(error){
+    if(token===photoEditToken)$('#product-photo-status').textContent=error?.message||'写真を編集できませんでした。';
+  }
+}
+async function editCurrentProductPhoto(){
+  const token=photoEditToken;
+  const image=pendingPhoto===undefined?currentPhotoData:pendingPhoto;
+  if(!PhotoStore.valid(image))return;
+  try{
+    const data=await window.BarcodePhotoEditor.open(image);
+    if(token!==photoEditToken)return;
+    if(data){pendingPhoto=data;showEditorPhoto();}
+  }catch(error){
+    if(token===photoEditToken)$('#product-photo-status').textContent=error?.message||'写真を編集できませんでした。';
   }
 }
 async function saveEditedPhoto(productId){
@@ -1134,7 +1118,7 @@ function clearForm(){
   editingId=null;editingCatalogId=null;
   photoEditToken++;pendingPhoto=undefined;currentPhotoData=null;
   HTMLFormElement.prototype.reset.call($('#editor'));$('#qty').value='1';$('#folder-select').value='';
-  $('#product-photo-current').hidden=true;$('#product-photo-remove').hidden=true;
+  $('#product-photo-current').hidden=true;$('#product-photo-remove').hidden=true;$('#product-photo-edit').hidden=true;
   $('#product-photo-thumb').removeAttribute('src');
   $('#product-photo-status').textContent='写真は未登録です。';
   $('#save').textContent='保存して印刷リストに追加';updatePreview();
@@ -1411,6 +1395,7 @@ for(const id of ['#product-photo-camera','#product-photo-file']){
   });
 }
 $('#product-photo-remove').addEventListener('click',()=>{pendingPhoto=null;showEditorPhoto();});
+$('#product-photo-edit').addEventListener('click',()=>{photoProcessing=editCurrentProductPhoto();});
 $('#preview-label-height').addEventListener('change',e=>setLabelHeight(e.target.value));
 window.addEventListener('resize',scalePreviewPages);
 $('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print-preview-overlay')closePrintPreview();});
