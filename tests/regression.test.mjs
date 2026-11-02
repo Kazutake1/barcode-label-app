@@ -120,6 +120,7 @@ test('unsafe HTML sinks are absent and the decoder CSP is restricted',()=>{
  assert.ok(!/\beval\s*\(/.test(app));
  assert.ok(html.includes("script-src 'self' https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"));
  assert.ok(app.includes("script.referrerPolicy='no-referrer'"));
+ assert.ok(app.includes("script.integrity='sha384-HRtzk9lZgkbSgvUyQrnfC/GxiXZgwaNyD7hC9wcXlsBpDhkS80ISl73juef2FRuf'"));
 });
 test('mobile printing dimensions and excess-space regression',()=>{
  assert.ok(css.includes('.print-toolbar .print-settings{flex:0 0 auto;width:100%}'));
@@ -133,7 +134,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker stays on first-party resources',()=>{
- assert.ok(sw.includes('barcode-label-local-v62'));
+ assert.ok(sw.includes('barcode-label-local-v63'));
  assert.ok(sw.includes('origin!==self.location.origin'));
  assert.ok(sw.includes('if(req.method!=="GET")return'));
 });

@@ -1353,6 +1353,9 @@ function loadDecoder(){
   decoderLoading=new Promise((resolve,reject)=>{
     const script=document.createElement('script');script.src=SCAN_LIBRARY_URL;script.async=true;
     script.crossOrigin='anonymous';script.referrerPolicy='no-referrer';
+    // Verified against the published @zxing/browser@0.2.1 npm UMD artifact.
+    // A modified CDN response is blocked by the browser before execution.
+    script.integrity='sha384-HRtzk9lZgkbSgvUyQrnfC/GxiXZgwaNyD7hC9wcXlsBpDhkS80ISl73juef2FRuf';
     script.onload=()=>window.ZXingBrowser?.BrowserMultiFormatReader?resolve():reject(new Error('読み取り機能の初期化に失敗しました。'));
     script.onerror=()=>reject(new Error('読み取り機能を読み込めません。初回はインターネット接続が必要です。'));
     document.head.append(script);
