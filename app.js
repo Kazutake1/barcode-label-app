@@ -875,7 +875,13 @@ function renderCatalog(){
     });
     actions.append(add,edit,moveLabel,del);
     menu.append(trigger,actions);line.append(menu);
-    row.append(line);target.append(row);
+    // Display the same locally generated, valid barcode used on printed labels.
+    // Keep it below the name, number, date and actions so narrow screens do not
+    // compress the bars or displace the existing product controls.
+    const barcode=document.createElement('div');
+    barcode.className='catalog-barcode';
+    barcode.append(createBarcodeSvg(product.code));
+    row.append(line,barcode);target.append(row);
   }
 }
 
