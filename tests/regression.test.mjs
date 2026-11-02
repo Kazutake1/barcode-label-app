@@ -51,7 +51,7 @@ test('barcode SVG and legacy backup codes normalize Unicode digits, spaces, hyph
   const data=backup.validateBackupDocument(backupSample(candidate));
   assert.equal(data.products[0].code,code);
   assert.equal(data.printItems[0].code,code);
-  assert.deepEqual(barcode.createBarcodeSvg(candidate),svg);
+  assert.equal(JSON.stringify(barcode.createBarcodeSvg(candidate)),JSON.stringify(svg));
  }
 });
 test('bad checksums and duplicate canonical codes are blocked',()=>{
@@ -73,21 +73,21 @@ test('quota exceeded is reported as a failed save',()=>{
  assert.equal(f.saveRecords(),false);
 });
 test('late camera initialization cannot reactivate after stop',async()=>{
- let finish,stops=0;
+ let finish,stops=0,decoding=false;
  const pending=new Promise(resolve=>{finish=resolve;});
  const elements={'#start-camera':{disabled:false},'#scanner':{hidden:true},
  '#camera-status':{textContent:''},'#camera':{srcObject:null}};
  const deps={$:id=>elements[id],loadDecoder:()=>Promise.resolve(),toast:()=>{},
   handleScanValue:()=>true,navigator:{mediaDevices:{getUserMedia(){}}},
-  window:{ZXingBrowser:{BrowserMultiFormatReader:class{decodeFromConstraints(){return pending;}}}}};
+  window:{ZXingBrowser:{BrowserMultiFormatReader:class{decodeFromConstraints(){decoding=true;return pending;}}}}};
  const cam=new Function('env',
  'const {$,loadDecoder,toast,handleScanValue,navigator,window}=env;'+
  'let scanControls=null,reader=null,scanSession=0;'+
  segment('async function startCamera(){',"$('#editor').addEventListener('submit'")+
  'return {startCamera,stopCamera,current:()=>scanControls};')(deps);
  const starting=cam.startCamera();
- for(let i=0;i<6&&!finish;i++)await Promise.resolve();
- assert.equal(typeof finish,'function');
+ for(let i=0;i<8&&!decoding;i++)await Promise.resolve();
+ assert.equal(decoding,true);
  cam.stopCamera();
  finish({stop(){stops++;}});
  await starting;
