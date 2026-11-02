@@ -1204,7 +1204,6 @@ function buildPrintSheets(){
   }
   $('#preview-paper').value=paper;
   $('#preview-label-height').value=String(labelHeightMm);
-  $('#print-preview-meta').textContent=`${paper}・縦向き・2列・ラベルの高さ${labelHeightMm}mm / ${stagedPrintItems.length}商品・合計${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
   const standalone=window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
   $('#print-ios-fallback').hidden=!isIOSHomeScreenApp();
   $('#print-transfer-status').textContent='';
