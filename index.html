@@ -44,6 +44,11 @@
         <p class="hint" id="code-status">JAN-13（13桁）、JAN-8（8桁）、UPC-A（12桁）に対応</p>
         <label for="name">商品名</label>
         <input id="name" name="name" maxlength="80" autocomplete="off" placeholder="例：お茶 600ml" required>
+        <div class="name-break-tools">
+          <button id="set-name-break" type="button" class="button secondary">カーソル位置で改行</button>
+          <button id="clear-name-break" type="button" class="button ghost" hidden>改行を解除</button>
+        </div>
+        <p id="name-break-status" class="name-break-status" role="status">改行位置：自動（15mm以上は最大2行）</p>
         <label for="tags">タグ（任意・最大8個）</label>
         <input id="tags" name="tags" maxlength="180" autocomplete="off" placeholder="例：飲料、店舗A">
         <label for="folder-select">保存先フォルダ</label>
