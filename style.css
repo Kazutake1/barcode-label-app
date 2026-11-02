@@ -792,3 +792,22 @@ input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
 .print-transfer-status{min-height:0}
 .print-ios-fallback .print-transfer-note{color:#718093;font-size:11px}
 @media print{.print-ios-fallback{display:none!important}}
+
+/* v1.47: Scannable barcode below each saved product, without a frame or a layout change to folders. */
+.catalog-barcode{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  min-width:0;
+  margin-top:11px;
+  padding:2px 0 1px;
+}
+.catalog-barcode svg{
+  display:block;
+  width:auto;
+  height:auto;
+  max-width:100%;
+  max-height:17.82mm;
+  flex:0 1 auto;
+}
+@media print{.catalog-barcode{display:none!important}}
