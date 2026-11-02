@@ -12,9 +12,9 @@
 <meta name="color-scheme" content="light dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js; style-src 'self'; img-src 'self' data: blob:; connect-src 'none'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>バーコードラベル作成</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=64">
 <link rel="manifest" href="manifest.webmanifest">
-<script src="app.js" defer></script>
+<script src="app.js?v=64" defer></script>
 </head>
 <body>
 <main class="app">
@@ -44,7 +44,7 @@
         <p class="hint" id="code-status">JAN-13（13桁）、JAN-8（8桁）、UPC-A（12桁）に対応</p>
         <label for="name">商品名</label>
         <input id="name" name="name" maxlength="80" autocomplete="off" placeholder="例：お茶 600ml" required>
-        <p id="name-break-status" class="name-break-status" role="status">全角スペースで改行（15mm以上・1か所まで）</p>
+        <p id="name-break-status" class="name-break-status" role="status">全角スペースで改行（1か所まで）</p>
         <label for="folder-select">保存先フォルダ</label>
         <select id="folder-select" name="folder"><option value="">未分類</option></select>
         <label for="qty">印刷枚数</label>
@@ -64,7 +64,7 @@
     <div class="print-toolbar">
       <div class="print-settings">
         <label for="paper">用紙</label><select id="paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦・JIS）</option></select>
-        <label for="label-height">ラベルの高さ</label><select id="label-height"><option value="5">5mm</option><option value="10">10mm</option><option value="15">15mm</option><option value="20" selected>20mm</option><option value="25">25mm</option><option value="30">30mm</option><option value="35">35mm</option><option value="40">40mm</option><option value="45">45mm</option><option value="50">50mm</option></select>
+        <label for="label-height">ラベルの高さ</label><select id="label-height"><option value="30" selected>30mm</option><option value="35">35mm</option><option value="40">40mm</option><option value="45">45mm</option><option value="50">50mm</option></select>
       </div>
       <button type="button" id="print-all" class="button primary print-button">選択したラベルの印刷プレビュー</button>
     </div>
@@ -143,7 +143,7 @@
     <div class="print-preview-heading"><h2 id="print-preview-title">印刷プレビュー</h2><button type="button" id="close-print-preview" class="button ghost">閉じる</button></div>
     <div class="print-preview-settings">
       <label for="preview-paper">用紙サイズ</label><select id="preview-paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦）</option></select>
-      <label for="preview-label-height">ラベルの高さ</label><select id="preview-label-height"><option value="5">5mm</option><option value="10">10mm</option><option value="15">15mm</option><option value="20" selected>20mm</option><option value="25">25mm</option><option value="30">30mm</option><option value="35">35mm</option><option value="40">40mm</option><option value="45">45mm</option><option value="50">50mm</option></select>
+      <label for="preview-label-height">ラベルの高さ</label><select id="preview-label-height"><option value="30" selected>30mm</option><option value="35">35mm</option><option value="40">40mm</option><option value="45">45mm</option><option value="50">50mm</option></select>
     </div>
     <div id="print-preview-pages" class="print-preview-pages"></div>
     <p id="print-guidance" class="print-guidance"></p>
