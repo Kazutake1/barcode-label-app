@@ -714,3 +714,28 @@ body.print-preview-open{overflow:hidden}
   top:-9px;
   height:20px
 }
+
+/* v1.38: device-only product photos, optional print images. */
+.product-photo-editor{margin:5px 0 15px}
+.photo-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.photo-actions .button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.photo-actions .button[hidden],.product-photo-current[hidden]{display:none!important}
+.product-photo-current{margin:9px 0 0;width:90px;height:90px;display:grid;place-items:center;border:1px solid #d6e0ee;background:#f7f9fc;border-radius:9px;overflow:hidden}
+.product-photo-current img{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
+.product-photo-status{font-size:11px;line-height:1.5;color:#65758b;margin:6px 0 0}
+.print-photo-option{display:inline-flex!important;align-items:center;gap:7px;margin:4px 0!important;white-space:normal;font-size:12px!important;line-height:1.5;cursor:pointer}
+.print-photo-option input{width:17px;height:17px;margin:0;flex:0 0 auto;accent-color:#1769d4}
+.print-photo-option:has(input:disabled){color:#86919e}
+.print-settings>.print-photo-option{flex:1 1 100%;order:10}
+.print-preview-settings>.print-photo-option{flex:1 1 100%;order:10}
+.catalog-summary .catalog-photo-thumb{width:42px;height:42px;object-fit:contain;border:1px solid #dae4ef;border-radius:6px;flex:0 0 auto;background:#fff}
+.product-label.has-photo .name-cell{display:flex;flex-direction:row;gap:5px;align-items:center;justify-content:flex-start}
+.product-label.has-photo .label-product-photo{width:40%;max-width:40%;height:88%;max-height:38mm;object-fit:contain;flex:0 0 auto;background:white}
+.product-label.has-photo .label-name-text{flex:1;min-width:0;overflow-wrap:anywhere;word-break:break-word;line-height:1.12;font-size:.8em}
+.paper-page .product-label.has-photo .name-cell{padding:.4mm .7mm;gap:.8mm}
+.paper-page .product-label.has-photo .label-product-photo{width:43%;max-width:43%;height:90%;object-fit:contain}
+.paper-page .product-label.has-photo .label-name-text{font-size:10pt}
+@media print{
+  .print-sheet .paper-page .product-label.has-photo .name-cell{display:flex;flex-direction:row}
+  .print-sheet .paper-page .product-label.has-photo .label-product-photo{width:43%;max-width:43%;height:90%}
+}
