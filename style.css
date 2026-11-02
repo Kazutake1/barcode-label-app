@@ -715,33 +715,7 @@ body.print-preview-open{overflow:hidden}
   height:20px
 }
 
-/* v1.38: device-only product photos, optional print images. */
-.product-photo-editor{margin:5px 0 15px}
-.photo-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.photo-actions .button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
-.photo-actions .button[hidden],.product-photo-current[hidden]{display:none!important}
-.product-photo-current{margin:9px 0 0;width:90px;height:90px;display:grid;place-items:center;border:1px solid #d6e0ee;background:#f7f9fc;border-radius:9px;overflow:hidden}
-.product-photo-current img{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain}
-.product-photo-status{font-size:11px;line-height:1.5;color:#65758b;margin:6px 0 0}
-.print-photo-option{display:inline-flex!important;align-items:center;gap:7px;margin:4px 0!important;white-space:normal;font-size:12px!important;line-height:1.5;cursor:pointer}
-.print-photo-option input{width:17px;height:17px;margin:0;flex:0 0 auto;accent-color:#1769d4}
-.print-photo-option:has(input:disabled){color:#86919e}
-.print-settings>.print-photo-option{flex:1 1 100%;order:10}
-.print-preview-settings>.print-photo-option{flex:1 1 100%;order:10}
-.catalog-summary .catalog-photo-thumb{width:42px;height:42px;object-fit:contain;border:1px solid #dae4ef;border-radius:6px;flex:0 0 auto;background:#fff}
-.product-label.has-photo .name-cell{display:flex;flex-direction:row;gap:5px;align-items:center;justify-content:flex-start}
-.product-label.has-photo .label-product-photo{width:40%;max-width:40%;height:88%;max-height:38mm;object-fit:contain;flex:0 0 auto;background:white}
-.product-label.has-photo .label-name-text{flex:1;min-width:0;overflow-wrap:anywhere;word-break:break-word;line-height:1.12;font-size:.8em}
-.paper-page .product-label.has-photo .name-cell{padding:.4mm .7mm;gap:.8mm}
-.paper-page .product-label.has-photo .label-product-photo{width:43%;max-width:43%;height:90%;object-fit:contain}
-.paper-page .product-label.has-photo .label-name-text{font-size:10pt}
-@media print{
-  .print-sheet .paper-page .product-label.has-photo .name-cell{display:flex;flex-direction:row}
-  .print-sheet .paper-page .product-label.has-photo .label-product-photo{width:43%;max-width:43%;height:90%}
-}
-
-/* v1.39: consistent checkbox appearance on iOS/iPadOS Safari (light and dark).
-   Apply to every checkbox, including the optional product-photo print controls. */
+/* v1.39: consistent checkbox appearance on iOS/iPadOS Safari (light and dark). */
 input[type="checkbox"]{
   -webkit-appearance:none!important;
   appearance:none!important;
@@ -780,60 +754,3 @@ input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
 }
 
 
-/* v1.41: offline product-photo editor. Maintain consistent card/control spacing. */
-.photo-actions #product-photo-edit[hidden]{display:none!important}
-.photo-edit-overlay[hidden]{display:none!important}
-.photo-edit-overlay{
-  position:fixed;inset:0;z-index:10050;
-  padding:18px 12px max(20px,env(safe-area-inset-bottom));
-  background:rgba(16,25,40,.70);
-  display:flex;justify-content:center;align-items:flex-start;
-  overflow:auto;overscroll-behavior:contain
-}
-body.photo-editing{overflow:hidden}
-.photo-edit-dialog{
-  width:min(100%,500px);border-radius:18px;padding:18px;
-  background:#fff;color:#172638;box-shadow:0 15px 50px #0004
-}
-.photo-edit-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
-.photo-edit-heading h2{font-size:18px;font-weight:750;margin:0}
-.photo-edit-heading .button{flex:0 0 auto}
-.photo-edit-photo-area{margin-bottom:18px}
-.photo-edit-canvas-shell{
-  display:flex;justify-content:center;align-items:center;
-  border-radius:12px;padding:10px;background:#edf2f8
-}
-#photo-edit-canvas{
-  display:block;width:min(100%,320px);height:auto;aspect-ratio:1;
-  background:#fff;border:2px solid #3977c4;touch-action:none;
-  cursor:grab;user-select:none;-webkit-user-select:none
-}
-#photo-edit-canvas:active{cursor:grabbing}
-.photo-edit-instruction,.photo-edit-caption,.photo-edit-status{
-  font-size:12px;line-height:1.65;color:#5e7086;margin:10px 0 0
-}
-.photo-edit-tools{display:grid;gap:8px}
-.photo-edit-tools>label{
-  display:flex!important;justify-content:space-between;align-items:center;
-  margin:7px 0 0!important;font-size:13px!important
-}
-.photo-edit-tools input[type=range]{
-  width:100%;height:32px;margin:0;padding:0;border:0;
-  background:transparent;accent-color:#1769d4;
-  -webkit-appearance:auto;appearance:auto
-}
-.photo-edit-tools .photo-edit-buttons{display:flex;flex-wrap:wrap;gap:9px;margin:7px 0}
-.photo-edit-tools .photo-edit-buttons .button{min-height:42px;flex:1 1 auto;font-size:12px}
-.photo-edit-tools #photo-edit-white[aria-pressed="true"]{color:#fff;background:#1769d4}
-.photo-edit-tools .photo-edit-caption{margin:0 0 5px}
-.photo-edit-status{min-height:18px;margin:8px 0 14px}
-.photo-edit-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
-.photo-edit-footer #photo-edit-apply{width:100%}
-@media(max-width:480px){
-  .photo-edit-overlay{padding:8px 8px max(18px,env(safe-area-inset-bottom))}
-  .photo-edit-dialog{border-radius:13px;padding:14px}
-  .photo-edit-heading{gap:10px}
-  .photo-edit-heading h2{font-size:16px}
-  .photo-edit-canvas-shell{padding:8px}
-  .photo-edit-tools .photo-edit-buttons{gap:7px}
-}

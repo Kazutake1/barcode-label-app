@@ -14,8 +14,6 @@
 <title>バーコードラベル作成</title>
 <link rel="stylesheet" href="style.css">
 <link rel="manifest" href="manifest.webmanifest">
-<script src="photos.js" defer></script>
-<script src="photo-editor.js" defer></script>
 <script src="app.js" defer></script>
 </head>
 <body>
@@ -34,7 +32,6 @@
       <h2>ラベルを作成</h2>
       <div class="scan-actions">
         <button type="button" id="start-camera" class="button secondary"><span aria-hidden="true">▣</span> カメラで読み取る</button>
-        <label class="button secondary file-button"><span aria-hidden="true">▤</span> 写真から読み取る<input id="photo-input" type="file" accept="image/*" hidden></label>
       </div>
       <div id="scanner" class="scanner" hidden>
         <video id="camera" playsinline muted autoplay></video>
@@ -51,17 +48,6 @@
         <input id="tags" name="tags" maxlength="180" autocomplete="off" placeholder="例：飲料、店舗A">
         <label for="folder-select">保存先フォルダ</label>
         <select id="folder-select" name="folder"><option value="">未分類</option></select>
-        <label>商品写真（任意）</label>
-        <div class="product-photo-editor">
-          <div class="photo-actions">
-            <label class="button secondary file-button">写真を撮る<input id="product-photo-camera" type="file" accept="image/*" capture="environment" hidden></label>
-            <label class="button secondary file-button">写真から選ぶ<input id="product-photo-file" type="file" accept="image/*" hidden></label>
-            <button id="product-photo-edit" type="button" class="button secondary" hidden>写真を編集</button>
-            <button id="product-photo-remove" type="button" class="button ghost" hidden>写真を削除</button>
-          </div>
-          <div id="product-photo-current" class="product-photo-current" hidden><img id="product-photo-thumb" alt="登録する商品写真"></div>
-          <p id="product-photo-status" class="product-photo-status" role="status" aria-live="polite">写真は未登録です。</p>
-        </div>
         <label for="qty">印刷枚数</label>
         <div class="qty-row"><button id="minus" type="button" class="qty-button" aria-label="印刷枚数を1減らす">−</button><input id="qty" name="qty" type="number" inputmode="numeric" min="1" max="99" value="1" required><button id="plus" type="button" class="qty-button" aria-label="印刷枚数を1増やす">＋</button></div>
         <div class="form-actions"><button type="submit" id="save" class="button primary">保存して印刷リストに追加</button><button type="button" id="reset" class="button ghost">入力をクリア</button></div>
@@ -80,7 +66,6 @@
       <div class="print-settings">
         <label for="paper">用紙</label><select id="paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦・JIS）</option></select>
         <label for="label-height">ラベルの高さ</label><select id="label-height"><option value="5">5mm</option><option value="10">10mm</option><option value="15">15mm</option><option value="20" selected>20mm</option><option value="25">25mm</option><option value="30">30mm</option><option value="35">35mm</option><option value="40">40mm</option><option value="45">45mm</option><option value="50">50mm</option></select>
-        <label class="print-photo-option"><input id="print-photos" type="checkbox">商品画像も印刷（20mm以上）</label>
       </div>
       <button type="button" id="print-all" class="button primary print-button">選択したラベルの印刷プレビュー</button>
     </div>
@@ -157,47 +142,12 @@
     <div class="print-preview-heading"><h2 id="print-preview-title">印刷プレビュー</h2><button type="button" id="close-print-preview" class="button ghost">閉じる</button></div>
     <div class="print-preview-settings">
       <label for="preview-paper">用紙サイズ</label><select id="preview-paper"><option value="A4">A4（縦）</option><option value="B5">B5（縦）</option></select>
-      <label class="print-photo-option"><input id="preview-print-photos" type="checkbox">商品画像も印刷（20mm以上）</label>
       <label for="preview-label-height">ラベルの高さ</label><select id="preview-label-height"><option value="5">5mm</option><option value="10">10mm</option><option value="15">15mm</option><option value="20" selected>20mm</option><option value="25">25mm</option><option value="30">30mm</option><option value="35">35mm</option><option value="40">40mm</option><option value="45">45mm</option><option value="50">50mm</option></select>
     </div>
     <p id="print-preview-meta" class="print-preview-meta"></p>
     <div id="print-preview-pages" class="print-preview-pages"></div>
     <p id="print-guidance" class="print-guidance"></p>
     <div class="print-preview-actions"><button type="button" id="confirm-print" class="button primary">印刷画面を開く</button></div>
-  </section>
-</div>
-<div id="photo-edit-overlay" class="photo-edit-overlay" hidden>
-  <section class="photo-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="photo-edit-heading">
-    <div class="photo-edit-heading">
-      <h2 id="photo-edit-heading">商品写真を編集</h2>
-      <button type="button" id="photo-edit-cancel" class="button ghost">キャンセル</button>
-    </div>
-    <div class="photo-edit-photo-area">
-      <div class="photo-edit-canvas-shell">
-        <canvas id="photo-edit-canvas" width="320" height="320" aria-label="トリミング範囲。指で写真を動かせます"></canvas>
-      </div>
-      <p class="photo-edit-instruction">枠内が切り抜かれます。指で移動、2本指で拡大できます。</p>
-    </div>
-    <div class="photo-edit-tools">
-      <label for="photo-edit-zoom">切り抜き・拡大 <span id="photo-edit-zoom-value">100%</span></label>
-      <input id="photo-edit-zoom" type="range" min="1" max="4" step="0.05" value="1">
-      <div class="photo-edit-buttons">
-        <button id="photo-edit-rotate-left" class="button secondary" type="button">左に90°回転</button>
-        <button id="photo-edit-rotate-right" class="button secondary" type="button">右に90°回転</button>
-      </div>
-      <label for="photo-edit-brightness">明るさ <span id="photo-edit-brightness-value">100%</span></label>
-      <input id="photo-edit-brightness" type="range" min="60" max="160" step="5" value="100">
-      <div class="photo-edit-buttons">
-        <button id="photo-edit-white" class="button secondary" type="button" aria-pressed="false">背景を白くする</button>
-        <button id="photo-edit-undo" class="button ghost" type="button" disabled>元に戻す</button>
-        <button id="photo-edit-reset" class="button ghost" type="button">最初から</button>
-      </div>
-      <p class="photo-edit-caption">背景は周囲の色をもとに白くします。商品も白くなる場合は「元に戻す」を押してください。</p>
-    </div>
-    <p id="photo-edit-status" class="photo-edit-status" role="status" aria-live="polite"></p>
-    <div class="photo-edit-footer">
-      <button id="photo-edit-apply" class="button primary" type="button">編集を適用</button>
-    </div>
   </section>
 </div>
 <div id="print-sheet" class="print-sheet" aria-hidden="true"></div>
