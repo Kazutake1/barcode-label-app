@@ -20,10 +20,3 @@ jobs:
           node --check sw.js
       - name: Run automated regression and security tests
         run: node --test tests/regression.test.mjs
-      - name: Record ZXing release bundle digest for review
-        run: |
-          tempdir="$(mktemp -d)"
-          cd "$tempdir"
-          npm pack --ignore-scripts --silent @zxing/browser@0.2.1
-          tar -xzf zxing-browser-0.2.1.tgz
-          node -e "const fs=require('node:fs'),crypto=require('node:crypto');const hash=crypto.createHash('sha384').update(fs.readFileSync('package/umd/zxing-browser.min.js')).digest('base64');console.log('DECODER_SRI=sha384-'+hash)"
