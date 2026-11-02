@@ -72,7 +72,8 @@ body.print-preview-open{overflow:hidden}
 
 /* Local product catalog */
 .catalog-panel{margin-top:17px}
-.catalog-header h2{margin-bottom:7px}
+.catalog-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;margin-bottom:12px}
+.catalog-header h2{margin-bottom:0}
 .catalog-header p{font-size:12px;line-height:1.7;color:#718093;margin:0 0 16px}
 .catalog-search-label{margin:4px 0 8px!important}
 #catalog-search{width:100%;height:45px;border:1px solid #d7dee8;border-radius:11px;padding:10px 12px;font-size:16px;background:#fff;color:#18212f}
@@ -650,14 +651,12 @@ body.print-preview-open{overflow:hidden}
   padding:12px 12px 11px;
   min-height:124px
 }
-.catalog-folder-heading{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0}
-.catalog-folder-heading h3{min-width:0}
 .folder-page-actions{position:relative;flex:0 0 auto;margin:0}
 .folder-page-actions[hidden]{display:none!important}
 .folder-page-actions summary{
   list-style:none;display:flex;align-items:center;justify-content:center;
-  width:44px;height:44px;border:1px solid #d8e4f2;border-radius:10px;
-  background:#f5f9ff;color:#1769d4;font-size:25px;line-height:1;cursor:pointer
+  width:36px;height:36px;border:1px solid #d8e4f2;border-radius:9px;
+  background:#f5f9ff;color:#1769d4;font-size:22px;line-height:1;cursor:pointer
 }
 .folder-page-actions summary::-webkit-details-marker{display:none}
 .folder-page-actions summary span{font:inherit;color:inherit}

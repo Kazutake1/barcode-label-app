@@ -12,9 +12,9 @@
 <meta name="color-scheme" content="light dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js; style-src 'self'; img-src 'self' data: blob:; connect-src 'none'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>バーコードラベル作成</title>
-<link rel="stylesheet" href="style.css?v=66">
+<link rel="stylesheet" href="style.css?v=67">
 <link rel="manifest" href="manifest.webmanifest">
-<script src="app.js?v=66" defer></script>
+<script src="app.js?v=67" defer></script>
 </head>
 <body>
 <main class="app">
@@ -75,6 +75,13 @@
     <div class="catalog-header">
       <div><h2>保存した商品 <span id="catalog-count" class="count">0件</span></h2>
       </div>
+      <details id="folder-page-actions" class="folder-page-actions" hidden>
+        <summary id="folder-page-menu-toggle" aria-label="フォルダの操作"><span aria-hidden="true">⋯</span></summary>
+        <div class="folder-page-menu">
+          <button id="folder-page-edit" type="button">フォルダ名を編集</button>
+          <button id="folder-page-delete" type="button">フォルダを削除</button>
+        </div>
+      </details>
     </div>
     <div id="catalog-browser" class="catalog-browser" data-opened="false">
       <aside id="folder-sidebar" class="folder-sidebar" aria-labelledby="folders-title">
@@ -95,16 +102,7 @@
         <div class="catalog-location-header">
           <button id="catalog-back" type="button" class="catalog-back">‹ フォルダ</button>
           <div class="catalog-location-title">
-            <div class="catalog-folder-heading">
-              <h3 id="catalog-current-name">すべての商品</h3>
-              <details id="folder-page-actions" class="folder-page-actions" hidden>
-                <summary id="folder-page-menu-toggle" aria-label="フォルダの操作"><span aria-hidden="true">⋯</span></summary>
-                <div class="folder-page-menu">
-                  <button id="folder-page-edit" type="button">フォルダ名を編集</button>
-                  <button id="folder-page-delete" type="button">フォルダを削除</button>
-                </div>
-              </details>
-            </div>
+            <h3 id="catalog-current-name">すべての商品</h3>
           </div>
           <button id="catalog-select-mode" type="button" class="catalog-select-toggle" aria-pressed="false">選択</button>
         </div>
