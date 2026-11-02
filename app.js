@@ -939,11 +939,12 @@ async function exportBackup(){
         try{
           await navigator.share({files:[file],title:'バーコードラベル バックアップ'});
           backupStatus('共有操作を終了しました。「ファイルに保存」などで保存先をご確認ください。');
+          return;
         }catch(error){
           if(error?.name==='AbortError'){backupStatus('バックアップの保存をキャンセルしました。');return;}
-          throw error;
+          // Photo backup creation is asynchronous; Safari may have lost user activation.
+          // Fall back to the ordinary file download instead of blocking backups.
         }
-        return;
       }
     }
     const url=URL.createObjectURL(blob);
