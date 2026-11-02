@@ -1058,7 +1058,9 @@ function updatePreview(){
   if(info.ok){
     status.textContent=`${info.type} ・ チェックデジット確認済み`;
     status.className='hint valid';
-    target.append(createLabel({code:info.code,name:$('#name').value.trim(),nameBreak:normalizeNameBreak($('#name').value,manualNameBreak)},labelHeightMm<=10));
+    const raw=$('#name').value,clean=raw.trim(),leading=raw.length-raw.trimStart().length;
+    const position=normalizeNameBreak(clean,manualNameBreak===null?null:manualNameBreak-leading);
+    target.append(createLabel({code:info.code,name:clean,nameBreak:position},labelHeightMm<=10));
     fitLabelName(target.querySelector('.name-cell'));
     $('#print-one').disabled=!$('#name').value.trim();
   }else{
