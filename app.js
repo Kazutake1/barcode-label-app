@@ -31,11 +31,22 @@ let editingId = null;
 let scanControls = null;
 let reader = null;
 let decoderLoading = null;
+let scanSession = 0;
 let toastTimer = null;
 let stagedPrintItems = [];
 let labelHeightMm = readLabelHeight();
 let printBusy = false;
 let productSaving = false;
+const catalogBarcodeObserver=typeof IntersectionObserver==='function'
+  ?new IntersectionObserver(entries=>{
+    for(const entry of entries){
+      if(!entry.isIntersecting)continue;
+      const target=entry.target;
+      catalogBarcodeObserver.unobserve(target);
+      if(!target.isConnected||!target.dataset.code)continue;
+      target.append(createBarcodeSvg(target.dataset.code));
+    }
+  },{rootMargin:'250px'}):null;
 let manualNameBreak = null;
 let previousNameValue = '';
 
@@ -75,6 +86,9 @@ function svgElem(name,attrs={}) {
   return element;
 }
 function createBarcodeSvg(code,compact=false) {
+  const info=codeInfo(code);
+  if(!info.ok)throw Error(info.error);
+  code=info.code;
   const bits=barcodeBits(code), isSmall=code.length===8;
   const qleft=isSmall?7:11, qright=7;
   const modules=qleft+bits.length+qright;
@@ -216,7 +230,7 @@ function readRecords(){
     const data=JSON.parse(localStorage.getItem(STORE_KEY)||'[]');
     if(!Array.isArray(data))return [];
     return data.filter(x=>x&&typeof x.name==='string'&&x.name.length<=80&&codeInfo(x.code).ok).slice(0,200)
-      .map(x=>({id:String(x.id||''),code:String(x.code),name:x.name,nameBreak:normalizeNameBreak(x.name,x.nameBreak),qty:Math.max(1,Math.min(99,Number(x.qty)||1)),selected:x.selected!==false}));
+      .map(x=>({id:String(x.id||''),code:codeInfo(x.code).code,name:x.name,nameBreak:normalizeNameBreak(x.name,x.nameBreak),qty:Math.max(1,Math.min(99,Number(x.qty)||1)),selected:x.selected!==false}));
   }catch{return []}
 }
 
@@ -520,10 +534,12 @@ function readCatalog(){
     if(!Array.isArray(items))return [];
     const seen=new Set();
     return items.filter(x=>{
-      if(!x||typeof x.name!=='string'||!x.name.trim()||x.name.length>80||!codeInfo(x.code).ok||seen.has(x.code))return false;
-      seen.add(x.code);return true;
+      if(!x||typeof x.name!=='string'||!x.name.trim()||x.name.length>80)return false;
+      const info=codeInfo(x.code);
+      if(!info.ok||seen.has(info.code))return false;
+      seen.add(info.code);return true;
     }).slice(0,500).map(x=>({
-      id:String(x.id||makeId()),code:x.code,name:x.name,nameBreak:normalizeNameBreak(x.name,x.nameBreak),folderId:resolveFolderId(x.folderId),
+      id:String(x.id||makeId()),code:codeInfo(x.code).code,name:x.name,nameBreak:normalizeNameBreak(x.name,x.nameBreak),folderId:resolveFolderId(x.folderId),
       createdAt:typeof x.createdAt==='string'&&!Number.isNaN(Date.parse(x.createdAt))?x.createdAt:null,
       updatedAt:typeof x.updatedAt==='string'&&!Number.isNaN(Date.parse(x.updatedAt))?x.updatedAt:null
     }));
@@ -732,7 +748,8 @@ function renderCatalog(){
   $('#catalog-bulk').hidden=!catalogSelectionMode;
   renderFolders();
   updateBulkSelection();
-  const target=$('#catalog-items');target.replaceChildren();
+  const target=$('#catalog-items');
+  catalogBarcodeObserver?.disconnect();target.replaceChildren();
   if(!filtered.length){
     const empty=document.createElement('div');empty.className='empty-list';
     empty.textContent=catalog.length?'条件に合う商品がありません。':'商品を登録すると、ここに保存されます。';
@@ -781,14 +798,15 @@ function renderCatalog(){
     const add=document.createElement('button');add.type='button';add.textContent='印刷リストに追加';
     add.addEventListener('click',()=>{
       menu.open=false;
-      const existing=records.find(x=>x.code===product.code);
-      if(existing){existing.name=product.name;existing.nameBreak=product.nameBreak;existing.selected=true;toast('印刷リストの既存商品を選択しました。');}
+      const before=cloneData(records),existing=records.find(x=>x.code===product.code);
+      if(existing){existing.name=product.name;existing.nameBreak=product.nameBreak;existing.selected=true;}
       else{
         if(records.length>=200){toast('印刷リストは200件までです。不要な商品をリストから削除してください。','error');return;}
         records.unshift({id:makeId(),code:product.code,name:product.name,nameBreak:product.nameBreak,qty:1,selected:true});
-        toast('印刷リストに追加しました。');
       }
-      saveRecords();renderRecords();
+      if(!saveRecords())records=before;
+      else toast(existing?'印刷リストの既存商品を選択しました。':'印刷リストに追加しました。');
+      renderRecords();
     });
     const edit=document.createElement('button');edit.type='button';edit.textContent='商品を編集';
     edit.addEventListener('click',()=>{
@@ -829,14 +847,16 @@ function renderCatalog(){
     // compress the bars or displace the existing product controls.
     const barcode=document.createElement('div');
     barcode.className='catalog-barcode';
-    barcode.append(createBarcodeSvg(product.code));
+    barcode.dataset.code=product.code;
     row.append(line,barcode);target.append(row);
+    if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode);
+    else barcode.append(createBarcodeSvg(product.code));
   }
 }
 
 const BACKUP_FORMAT = 'barcode-label-app-backup';
 const BACKUP_VERSION = 1;
-const BACKUP_FILE_LIMIT = 140 * 1024 * 1024;
+const BACKUP_FILE_LIMIT = 2 * 1024 * 1024;
 
 function backupStatus(message,isError=false){
   const target=$('#backup-status');
@@ -923,18 +943,19 @@ function validateBackupDocument(raw){
        ||!validName(item.name)||!validDate(item.createdAt)||!validDate(item.updatedAt)){
       throw Error('保存商品'+(index+1)+'件目の形式が正しくありません。');
     }
-    if(seenCodes.has(item.code))throw Error('バックアップに同じバーコード番号の商品が重複しています。');
-    seenCodes.add(item.code);
+    const canonical=codeInfo(item.code).code;
+    if(seenCodes.has(canonical))throw Error('バックアップに同じバーコード番号の商品が重複しています。');
+    seenCodes.add(canonical);
     const folderId=item.folderId??null;
     if(folderId!==null&&(!validFolderId(folderId)||!seenFolderIds.has(folderId)))throw Error('バックアップの商品が存在しないフォルダを参照しています。');
-    return {code:item.code,name:item.name,nameBreak:normalizeNameBreak(item.name,item.nameBreak),folderId,createdAt:item.createdAt,updatedAt:item.updatedAt};
+    return {code:canonical,name:item.name,nameBreak:normalizeNameBreak(item.name,item.nameBreak),folderId,createdAt:item.createdAt,updatedAt:item.updatedAt};
   });
   const printItems=raw.printList.map((item,index)=>{
     if(!item||typeof item!=='object'||Array.isArray(item)||typeof item.code!=='string'||!codeInfo(item.code).ok
        ||!validName(item.name)||!Number.isInteger(item.qty)||item.qty<1||item.qty>99||typeof item.selected!=='boolean'){
       throw Error('印刷リスト'+(index+1)+'件目の形式が正しくありません。');
     }
-    return {code:item.code,name:item.name,nameBreak:normalizeNameBreak(item.name,item.nameBreak),qty:item.qty,selected:item.selected};
+    return {code:codeInfo(item.code).code,name:item.name,nameBreak:normalizeNameBreak(item.name,item.nameBreak),qty:item.qty,selected:item.selected};
   });
   return {folders:incomingFolders,products,printItems};
 }
@@ -1000,7 +1021,7 @@ async function restoreBackup(file){
   if(!file)return;
   try{
     if(!file.name?.toLowerCase().endsWith('.json'))throw Error('JSONファイル（.json）を選択してください。');
-    if(file.size>BACKUP_FILE_LIMIT)throw Error('ファイルが大きすぎます（上限140MB）。');
+    if(file.size>BACKUP_FILE_LIMIT)throw Error('ファイルが大きすぎます（上限2MB）。');
     const raw=JSON.parse((await file.text()).replace(/^\uFEFF/,''));
     const parsed=validateBackupDocument(raw);
     if(!parsed.products.length&&!parsed.printItems.length&&!parsed.folders.length){
@@ -1021,7 +1042,11 @@ async function restoreBackup(file){
   }
 }
 
-function saveRecords(){try{localStorage.setItem(STORE_KEY,JSON.stringify(records));}catch{toast('端末の保存領域に空きがありません。','error');}}
+function saveRecords(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(records));return true;}
+  catch{toast('印刷リストの保存に失敗しました。端末の空き容量やSafariの設定を確認してください。','error');return false;}
+}
+function cloneData(items){return items.map(item=>({...item}));}
 function toast(message,type='ok'){
   const target=$('#toast');target.textContent=message;target.className='toast show'+(type==='error'?' error':'');
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>target.classList.remove('show'),5600);
@@ -1069,7 +1094,10 @@ function renderRecords(){
   for(const rec of records){
     const wrapper=document.createElement('div');wrapper.className='item';
     const check=document.createElement('input');check.type='checkbox';check.className='item-check';check.checked=rec.selected;
-    check.setAttribute('aria-label',`${rec.name}を印刷する`);check.addEventListener('change',()=>{rec.selected=check.checked;saveRecords();});
+    check.setAttribute('aria-label',`${rec.name}を印刷する`);check.addEventListener('change',()=>{
+      const before=rec.selected;rec.selected=check.checked;
+      if(!saveRecords()){rec.selected=before;check.checked=before;}
+    });
     const detail=document.createElement('div');detail.className='item-details';
     const nm=document.createElement('div');nm.className='item-name';nm.textContent=rec.name;
     const sub=document.createElement('div');sub.className='item-sub';sub.textContent=`${rec.code} / ${rec.qty}枚`;
@@ -1078,7 +1106,12 @@ function renderRecords(){
     const edit=document.createElement('button');edit.type='button';edit.textContent='編集';
     edit.addEventListener('click',()=>{editingCatalogId=null;editingId=rec.id;$('#code').value=rec.code;$('#name').value=rec.name;$('#qty').value=rec.qty;$('#folder-select').value=resolveFolderId(catalog.find(x=>x.code===rec.code)?.folderId)||'';$('#save').textContent='変更を保存';setNameBreakState(rec.nameBreak??catalog.find(x=>x.code===rec.code)?.nameBreak??null);updatePreview();window.scrollTo({top:0,behavior:'smooth'});});
     const del=document.createElement('button');del.type='button';del.textContent='削除';
-    del.addEventListener('click',()=>{records=records.filter(x=>x.id!==rec.id);saveRecords();renderRecords();toast('リストから削除しました。');});
+    del.addEventListener('click',()=>{
+      const before=records;records=records.filter(x=>x.id!==rec.id);
+      if(!saveRecords())records=before;
+      else toast('リストから削除しました。');
+      renderRecords();
+    });
     actions.append(edit,del);wrapper.append(check,detail,actions);target.append(wrapper);
   }
 }
@@ -1272,19 +1305,28 @@ function loadDecoder(){
 }
 async function startCamera(){
   if(!navigator.mediaDevices?.getUserMedia){toast('この環境ではカメラを起動できません。HTTPSのURLで開いてください。','error');return;}
-  const button=$('#start-camera');button.disabled=true;
+  const button=$('#start-camera'),session=++scanSession;button.disabled=true;
   try{
     await loadDecoder();
+    if(session!==scanSession)return;
     $('#scanner').hidden=false;$('#camera-status').textContent='バーコード全体を枠内に合わせてください';
     reader=new window.ZXingBrowser.BrowserMultiFormatReader();
     const controls=await reader.decodeFromConstraints({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}},$('#camera'),(result,error,control)=>{
+      if(session!==scanSession){control?.stop();return;}
       if(result){const raw=result.getText();if(handleScanValue(raw))control?.stop();}
     });
+    if(session!==scanSession){
+      try{controls?.stop();}catch{}
+      return;
+    }
     scanControls=controls;
-  }catch(error){stopCamera();toast('カメラを起動できません：'+(error?.message||'カメラの使用を許可してください。'),'error');}
-  finally{button.disabled=false;}
+  }catch(error){
+    if(session===scanSession){stopCamera();toast('カメラを起動できません：'+(error?.message||'カメラの使用を許可してください。'),'error');}
+  }finally{if(session===scanSession)button.disabled=false;}
 }
 function stopCamera(){
+  scanSession++;
+  $('#start-camera').disabled=false;
   try{scanControls?.stop();}catch{}
   scanControls=null;
   const video=$('#camera');
@@ -1296,8 +1338,10 @@ $('#editor').addEventListener('submit',async e=>{
   e.preventDefault();
   if(productSaving)return;
   productSaving=true;$('#save').disabled=true;
+  let beforeCatalog=null,beforeRecords=null;
   try{
     const data=formData();
+    beforeCatalog=cloneData(catalog);beforeRecords=cloneData(records);
     let product;
     let message='商品とバーコードを保存し、印刷リストに追加しました。';
     if(editingCatalogId){
@@ -1318,9 +1362,17 @@ $('#editor').addEventListener('submit',async e=>{
       product=upsertCatalog(data);
       records.unshift({id:makeId(),code:data.code,name:data.name,nameBreak:data.nameBreak,qty:data.qty,selected:true});
     }
-    saveRecords();renderRecords();
-    renderCatalog();clearForm();toast(message);
-  }catch(err){toast(err.message,'error');}
+    if(!saveRecords())throw Error('印刷リストを保存できなかったため、商品登録を取り消しました。');
+    renderRecords();renderCatalog();clearForm();toast(message);
+  }catch(err){
+    if(beforeCatalog!==null){
+      catalog=beforeCatalog;records=beforeRecords;
+      if(!saveCatalog())toast('商品データの復旧に失敗しました。バックアップをご確認ください。','error');
+      saveRecords();
+      renderRecords();renderCatalog();
+    }
+    toast(err.message,'error');
+  }
   finally{productSaving=false;$('#save').disabled=false;}
 });
 $('#code').addEventListener('input',updatePreview);
@@ -1424,7 +1476,10 @@ window.addEventListener('hashchange',()=>showPage(window.location.hash==='#saved
 $('#clear-all').addEventListener('click',()=>{
   if(!records.length)return;
   if(window.confirm(`印刷リストの${records.length}件をすべて削除しますか？保存した商品は残ります。`)){
-    records=[];saveRecords();renderRecords();clearForm();toast('印刷リストを削除しました。');
+    const before=records;records=[];
+    if(!saveRecords())records=before;
+    else{clearForm();toast('印刷リストを削除しました。');}
+    renderRecords();
   }
 });
 $('#start-camera').addEventListener('click',startCamera);
