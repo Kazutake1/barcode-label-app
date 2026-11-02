@@ -40,7 +40,6 @@ let printBusy = false;
 let productSaving = false;
 let manualNameBreak = null;
 let previousNameValue = '';
-let nameCaret = null;
 
 function normalizeCode(value) {
   const translated = String(value).replace(/[０-９]/g, ch=>String(ch.charCodeAt(0)-0xff10));
@@ -116,14 +115,47 @@ function reconcileNameBreak(oldName,newName,index){
   const next=index<=prefix?index:index>=oldName.length-suffix?index+newName.length-oldName.length:null;
   return normalizeNameBreak(newName,next);
 }
+// A newly entered ideographic space explicitly requests a line break.
+// Legacy names are never reinterpreted unless that space was newly inserted.
+function insertedFullwidthSpace(before,after){
+  if(before===after)return null;
+  let prefix=0;
+  while(prefix<before.length&&prefix<after.length&&before[prefix]===after[prefix])prefix++;
+  let suffix=0;
+  while(suffix<before.length-prefix&&suffix<after.length-prefix
+    &&before[before.length-1-suffix]===after[after.length-1-suffix])suffix++;
+  const offset=after.slice(prefix,after.length-suffix).indexOf('　');
+  return offset<0?null:prefix+offset;
+}
+function keepBreakWhenEditing(oldName,newName,index){
+  if(Number.isInteger(index)&&oldName[index]==='　'){
+    let prefix=0;
+    while(prefix<oldName.length&&prefix<newName.length&&oldName[prefix]===newName[prefix])prefix++;
+    let suffix=0;
+    while(suffix<oldName.length-prefix&&suffix<newName.length-prefix
+      &&oldName[oldName.length-1-suffix]===newName[newName.length-1-suffix])suffix++;
+    const moved=index<=prefix?index:index>=oldName.length-suffix?index+newName.length-oldName.length:null;
+    return Number.isInteger(moved)&&newName[moved]==='　'?moved:null;
+  }
+  return reconcileNameBreak(oldName,newName,index);
+}
+function spaceBreakCount(name){return (name.match(/　/g)||[]).length;}
+function tooManySpaceBreaks(name,index){
+  return name[index]==='　'&&spaceBreakCount(name)>1;
+}
 function createLabel({code,name,nameBreak},compact=false){
   const container=document.createElement('div');container.className='product-label';
   container.dataset.singleLine=String(compact);
   const body=document.createElement('div');body.className='label-body';
   const nameCell=document.createElement('div');nameCell.className='name-cell';
   const span=document.createElement('span');span.className='label-name-text';
-  const text=name||'商品名',position=compact?null:normalizeNameBreak(text,nameBreak);
-  if(position!==null){
+  const text=name||'商品名',position=normalizeNameBreak(text,nameBreak);
+  if(position!==null&&text[position]==='　'){
+    const first=text.slice(0,position),second=text.slice(position+1);
+    if(compact)span.textContent=first+' '+second;
+    else span.append(document.createTextNode(first),document.createElement('br'),document.createTextNode(second));
+  }else if(position!==null&&!compact){
+    // Preserve a break explicitly saved by the previous version of the app.
     span.append(document.createTextNode(text.slice(0,position)),document.createElement('br'),
       document.createTextNode(text.slice(position)));
   }else span.textContent=text;
@@ -170,15 +202,15 @@ function setNameBreakState(position){
   const name=$('#name').value;
   manualNameBreak=normalizeNameBreak(name,position);
   previousNameValue=name;
-  nameCaret=null;
   updateNameBreakStatus();
 }
 function updateNameBreakStatus(){
-  const name=$('#name').value,at=normalizeNameBreak(name,manualNameBreak);
-  $('#clear-name-break').hidden=at===null;
-  $('#name-break-status').textContent=at===null
-    ?'改行位置：自動（15mm以上は最大2行）'
-    :'改行位置：'+name.slice(0,at)+' ｜ '+name.slice(at)+(labelHeightMm<=10?'（5・10mmでは1行）':'');
+  const name=$('#name').value;
+  const invalid=tooManySpaceBreaks(name,manualNameBreak);
+  const text=$('#name-break-status');
+  text.textContent=invalid?'全角スペースは改行指定として1か所までにしてください。'
+    :'全角スペースで改行（15mm以上・1か所まで）';
+  text.classList.toggle('invalid',invalid);
 }
 
 function readRecords(){
@@ -1047,6 +1079,7 @@ function formData(){
   if(!name)throw Error('商品名を入力してください。');
   const lead=rawName.length-rawName.trimStart().length;
   const nameBreak=normalizeNameBreak(name,manualNameBreak===null?null:manualNameBreak-lead);
+  if(tooManySpaceBreaks(name,nameBreak))throw Error('改行に使う全角スペースは1か所までにしてください。');
   const qty=Number($('#qty').value);
   if(!Number.isInteger(qty)||qty<1||qty>99)throw Error('印刷枚数は1～99で指定してください。');
   const tags=normalizeTags($('#tags').value,true);
@@ -1296,28 +1329,13 @@ $('#editor').addEventListener('submit',async e=>{
 $('#code').addEventListener('input',updatePreview);
 $('#name').addEventListener('input',()=>{
   const field=$('#name'),current=field.value;
-  manualNameBreak=reconcileNameBreak(previousNameValue,current,manualNameBreak);
+  const next=insertedFullwidthSpace(previousNameValue,current);
+  manualNameBreak=next===null
+    ?keepBreakWhenEditing(previousNameValue,current,manualNameBreak)
+    :next;
   previousNameValue=current;
-  nameCaret=field.selectionStart;
   updateNameBreakStatus();
   updatePreview();
-});
-for(const eventName of ['click','keyup','select']){
-  $('#name').addEventListener(eventName,()=>{nameCaret=$('#name').selectionStart;});
-}
-$('#set-name-break').addEventListener('click',()=>{
-  const field=$('#name'),position=nameCaret;
-  if(normalizeNameBreak(field.value,position)===null){
-    toast('商品名の途中をタップしてカーソルを置いてください。','error');
-    field.focus();return;
-  }
-  manualNameBreak=position;
-  updateNameBreakStatus();
-  updatePreview();
-  field.focus();field.setSelectionRange(position,position);
-});
-$('#clear-name-break').addEventListener('click',()=>{
-  manualNameBreak=null;updateNameBreakStatus();updatePreview();
 });
 $('#reset').addEventListener('click',clearForm);
 $('#minus').addEventListener('click',()=>{$('#qty').value=Math.max(1,Number($('#qty').value||1)-1);});
