@@ -778,3 +778,17 @@ input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
 
 
 /* v1.45: Print label frames and the divider between name and barcode are removed. */
+
+/* The standalone iOS print fallback is shown only for affected launch modes.
+   Keep it compact, readable and outside the printable sheet. */
+.print-ios-fallback[hidden]{display:none!important}
+.print-ios-fallback{margin:15px 0 18px;padding:14px 13px;border-top:1px solid #d6dfea;border-bottom:1px solid #d6dfea;line-height:1.65}
+.print-ios-fallback h3{font-size:14px;margin:0 0 8px}
+.print-ios-fallback p,.print-ios-fallback li{font-size:12px;line-height:1.65;margin:4px 0}
+.print-ios-fallback ol{margin:10px 0 12px;padding-left:22px}
+.print-ios-fallback li+li{margin-top:7px}
+.print-ios-fallback a{color:#1555a3;text-decoration:underline;overflow-wrap:anywhere}
+.print-ios-fallback .button{margin:8px 0}
+.print-transfer-status{min-height:0}
+.print-ios-fallback .print-transfer-note{color:#718093;font-size:11px}
+@media print{.print-ios-fallback{display:none!important}}

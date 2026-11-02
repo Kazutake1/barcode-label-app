@@ -1129,6 +1129,48 @@ function renderRecords(){
     actions.append(edit,del);wrapper.append(check,detail,actions);target.append(wrapper);
   }
 }
+function isIOSHomeScreenApp(){
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)
+    ||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const installed=window.matchMedia?.('(display-mode: standalone)')?.matches||navigator.standalone===true;
+  return ios&&installed;
+}
+async function exportPrintTransfer(){
+  const status=$('#print-transfer-status');
+  if(!stagedPrintItems.length){status.textContent='印刷対象がありません。';return;}
+  const exported={
+    format:BACKUP_FORMAT,version:BACKUP_VERSION,exportedAt:new Date().toISOString(),
+    folders:[],savedProducts:[],
+    printList:stagedPrintItems.map(item=>({
+      code:item.code,name:item.name,nameBreak:item.nameBreak??null,
+      qty:item.qty,selected:true
+    }))
+  };
+  const blob=new Blob([JSON.stringify(exported,null,2)],{type:'application/json'});
+  const filename='barcode-label-print-transfer.json';
+  try{
+    if(typeof File!=='undefined'&&navigator.canShare&&navigator.share){
+      const file=new File([blob],filename,{type:'application/json'});
+      if(navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({files:[file],title:'バーコードラベル 印刷データ'});
+          status.textContent='共有操作が終了しました。保存先の「ファイル」を確認してください。';
+          return;
+        }catch(error){
+          if(error?.name==='AbortError'){status.textContent='保存をキャンセルしました。';return;}
+        }
+      }
+    }
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.href=url;link.download=filename;
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    status.textContent='ファイルの保存を開始しました。ダウンロード先を確認してください。';
+  }catch{
+    status.textContent='保存できませんでした。Safariで直接開いてから印刷をお試しください。';
+  }
+}
 function printFeedback(message){
   const box=$('#print-feedback');
   box.textContent=message;
@@ -1211,6 +1253,8 @@ function buildPrintSheets(){
   $('#preview-label-height').value=String(labelHeightMm);
   $('#print-preview-meta').textContent=`${paper}・縦向き・2列・ラベルの高さ${labelHeightMm}mm / ${stagedPrintItems.length}商品・合計${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
   const standalone=window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
+  $('#print-ios-fallback').hidden=!isIOSHomeScreenApp();
+  $('#print-transfer-status').textContent='';
   $('#print-guidance').textContent=standalone
     ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いてください。プリンターの用紙サイズはアプリと一致させてください。'
     : '「印刷画面を開く」の後、プリンターの用紙サイズを上で選んだサイズに合わせ、倍率を100%にしてください。';
@@ -1252,7 +1296,8 @@ function confirmPrint(){
     void $('#print-sheet').offsetHeight;
     window.print();
   }catch(err){
-    $('#print-guidance').textContent='印刷画面を開けませんでした。Safariでこのページを直接開き、再度お試しください。';
+    $('#print-guidance').textContent='印刷画面を開けませんでした。Safariで開いて再度お試しください。下の方法で印刷対象のデータを移せます。';
+    $('#print-ios-fallback').hidden=false;
   }
 }
 function handleScanValue(raw){
@@ -1346,6 +1391,7 @@ $('#print-one').addEventListener('click',()=>{
 $('#print-all').addEventListener('click',()=>printLabels(records.filter(r=>r.selected)));
 $('#close-print-preview').addEventListener('click',closePrintPreview);
 $('#confirm-print').addEventListener('click',confirmPrint);
+$('#export-print-transfer').addEventListener('click',exportPrintTransfer);
 $('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.value;buildPrintSheets();});
 $('#label-height').addEventListener('change',e=>setLabelHeight(e.target.value));
 $('#preview-label-height').addEventListener('change',e=>setLabelHeight(e.target.value));
