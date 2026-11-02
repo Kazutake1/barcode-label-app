@@ -1,0 +1,22 @@
+name: Barcode app regression checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout pinned revision
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Validate browser JavaScript syntax
+        run: |
+          node --version
+          node --check app.js
+          node --check sw.js
+      - name: Run automated regression and security tests
+        run: node --test tests/regression.test.mjs
