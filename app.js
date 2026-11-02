@@ -6,6 +6,7 @@ const FOLDERS_KEY = 'barcode-label-folders-v1';
 const DATA_KEY = 'barcode-label-data-v2';
 let storageReadError = false;
 let storedSnapshot = readSnapshot();
+const LABEL_LAYOUT_KEY = 'barcode-label-print-layout-v1';
 const LABEL_HEIGHT_KEY = 'barcode-label-print-height-mm-v1';
 const MAX_FOLDERS = 50;
 const MAX_FOLDER_NAME = 30;
@@ -38,6 +39,7 @@ let scanSession = 0;
 let toastTimer = null;
 let stagedPrintItems = [];
 let labelHeightMm = readLabelHeight();
+let labelLayout = readLabelLayout();
 let printBusy = false;
 let productSaving = false;
 const catalogBarcodeObserver=typeof IntersectionObserver==='function'
@@ -166,6 +168,7 @@ function tooManySpaceBreaks(name,index){
 function createLabel({code,name,nameBreak},compact=false){
   const container=document.createElement('div');container.className='product-label';
   container.dataset.singleLine=String(compact);
+  container.dataset.layout=labelLayout;
   const body=document.createElement('div');body.className='label-body';
   const nameCell=document.createElement('div');nameCell.className='name-cell';
   const span=document.createElement('span');span.className='label-name-text';
@@ -181,7 +184,11 @@ function createLabel({code,name,nameBreak},compact=false){
   }else span.textContent=text;
   nameCell.append(span);
   const barcodeCell=document.createElement('div');barcodeCell.className='barcode-cell';
-  barcodeCell.append(createBarcodeSvg(code,compact,labelHeightMm<30));
+  const svg=createBarcodeSvg(code,compact,labelHeightMm<30);
+  if(labelLayout==='vertical')svg.setAttribute('preserveAspectRatio','none');
+  barcodeCell.style.setProperty('--barcode-width',svg.getAttribute('width'));
+  barcodeCell.style.setProperty('--symbol-height',compact?(labelHeightMm===5?'3.9mm':'8.5mm'):labelHeightMm<30?'17.82mm':'26.73mm');
+  barcodeCell.append(svg);
   body.append(nameCell,barcodeCell);
   container.append(body);
   return container;
@@ -1234,6 +1241,23 @@ function printFeedback(message){
   box.hidden=!message;
   if(message)box.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+function validLabelLayout(value){return value==='horizontal'||value==='vertical';}
+function readLabelLayout(){
+  try{
+    const value=localStorage.getItem(LABEL_LAYOUT_KEY);
+    return validLabelLayout(value)?value:'horizontal';
+  }catch{return 'horizontal';}
+}
+function setLabelLayout(value){
+  if(!validLabelLayout(value))return;
+  labelLayout=value;
+  $('#label-layout').value=value;
+  $('#preview-label-layout').value=value;
+  try{localStorage.setItem(LABEL_LAYOUT_KEY,value);}
+  catch{toast('配置を記憶できませんでした。今回の印刷には反映されます。','error');}
+  updatePreview();
+  if(!$('#print-preview-overlay').hidden&&stagedPrintItems.length)buildPrintSheets();
+}
 function validLabelHeight(value){
   const mm=Number(value);
   return Number.isInteger(mm)&&mm>=5&&mm<=50&&mm%5===0;
@@ -1308,6 +1332,7 @@ function buildPrintSheets(){
   }
   $('#preview-paper').value=paper;
   $('#preview-label-height').value=String(labelHeightMm);
+  $('#preview-label-layout').value=labelLayout;
   const standalone=window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
   $('#print-ios-fallback').hidden=!isIOSHomeScreenApp();
   $('#print-transfer-status').textContent='';
@@ -1318,6 +1343,9 @@ function buildPrintSheets(){
     $('#print-guidance').textContent=labelHeightMm+'mmはバーコード下の数字を省略しています。商品名が読みにくくなる、またはバーコードがスキャンできない可能性があります。必ず実寸で試し刷りし、レジで読み取れることをご確認ください。 '+$('#print-guidance').textContent;
   }else if(labelHeightMm===15){
     $('#print-guidance').textContent='15mmではバーコードが小さくなり、読み取りにくい場合があります。試し刷りしてご確認ください。 '+$('#print-guidance').textContent;
+  }
+  if(labelLayout==='vertical'&&labelHeightMm<=25){
+    $('#print-guidance').textContent='縦並びの小さいラベルはバーコードの高さが低くなります。実際に使う発注端末で試し読みしてください。 '+$('#print-guidance').textContent;
   }
   if(flat.length>perPage){
     $('#print-guidance').textContent=`印刷枚数の合計が${flat.length}枚のため${Math.ceil(flat.length/perPage)}ページになります。1ページに収めたい場合は、各商品の「印刷枚数」を減らしてください。`+' '+$('#print-guidance').textContent;
@@ -1481,6 +1509,8 @@ $('#close-print-preview').addEventListener('click',closePrintPreview);
 $('#confirm-print').addEventListener('click',confirmPrint);
 $('#export-print-transfer').addEventListener('click',exportPrintTransfer);
 $('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.value;buildPrintSheets();});
+$('#label-layout').addEventListener('change',e=>setLabelLayout(e.target.value));
+$('#preview-label-layout').addEventListener('change',e=>setLabelLayout(e.target.value));
 $('#label-height').addEventListener('change',e=>setLabelHeight(e.target.value));
 $('#preview-label-height').addEventListener('change',e=>setLabelHeight(e.target.value));
 window.addEventListener('resize',()=>{fitLabelName($('#preview .name-cell'));scalePreviewPages();});
@@ -1589,5 +1619,7 @@ window.addEventListener('pagehide',stopCamera);
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 $('#label-height').value=String(labelHeightMm);
 $('#preview-label-height').value=String(labelHeightMm);
+$('#label-layout').value=labelLayout;
+$('#preview-label-layout').value=labelLayout;
 if(storageReadError)toast('保存データを読み取れません。元のデータは変更せず保護しています。','error');
 migrateOldProducts();renderRecords();renderCatalog();updatePreview();showPage(window.location.hash==='#saved'?'saved':'create');

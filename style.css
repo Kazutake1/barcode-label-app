@@ -820,3 +820,32 @@ input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
 .paper-page[data-label-height="25"] .product-label svg{
   height:17.82mm!important
 }
+
+/* Paper, height and layout stay on one row on narrow screens too. */
+.print-settings,.print-preview-settings{
+  grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,.85fr);
+  gap:6px
+}
+.print-settings label:not(.button),.print-preview-settings label{font-size:12px}
+.print-settings select,.print-preview-settings select{font-size:13px;padding:7px 17px 7px 5px}
+@media(max-width:390px){
+  .print-settings,.print-preview-settings{gap:4px}
+  .print-settings label:not(.button),.print-preview-settings label{font-size:11px}
+  .print-settings select,.print-preview-settings select{font-size:12px;padding:6px 14px 6px 4px}
+}
+/* Stack product name over barcode without changing the physical label size. */
+.preview-stage .product-label[data-layout="vertical"] .label-body,
+.paper-page .product-label[data-layout="vertical"] .label-body{
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:minmax(0,22fr) minmax(0,78fr)
+}
+.product-label[data-layout="vertical"] .name-cell{padding:.25mm 1mm;line-height:1.1}
+.product-label[data-layout="vertical"] .barcode-cell{min-width:0;min-height:0;padding:.2mm 1mm}
+.paper-page .product-label[data-layout="vertical"] svg{
+  width:var(--barcode-width)!important;height:100%!important;
+  max-width:100%;max-height:var(--symbol-height)!important
+}
+.paper-page[data-label-height="5"] .product-label[data-layout="vertical"] .name-cell{padding:0 .3mm}
+.paper-page[data-label-height="5"] .product-label[data-layout="vertical"] .barcode-cell{padding:.08mm .35mm}
+.paper-page[data-label-height="10"] .product-label[data-layout="vertical"] .name-cell{padding:.1mm .65mm}
+.paper-page[data-label-height="10"] .product-label[data-layout="vertical"] .barcode-cell{padding:.1mm .65mm}
