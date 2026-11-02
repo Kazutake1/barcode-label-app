@@ -148,6 +148,19 @@
     <p id="print-preview-meta" class="print-preview-meta"></p>
     <div id="print-preview-pages" class="print-preview-pages"></div>
     <p id="print-guidance" class="print-guidance"></p>
+    <div id="print-ios-fallback" class="print-ios-fallback" hidden>
+      <h3>ホーム画面アプリで印刷画面が開かない場合</h3>
+      <p>一部のiOSではホーム画面アプリから印刷画面が開きません。次の方法で現在の印刷対象をSafariへ移せます。</p>
+      <ol>
+        <li>「印刷データを保存」を押し、JSONファイルを「ファイル」に保存します。</li>
+        <li>Safariで<a href="https://kazutake1.github.io/barcode-label-app/" target="_blank" rel="noopener noreferrer">バーコードラベルのサイト</a>を開きます。</li>
+        <li>「保存した商品」→「バックアップから復元」で保存したJSONを読み込みます。</li>
+        <li>「ラベル作成・印刷」の印刷リストで対象を選択して印刷します。</li>
+      </ol>
+      <button type="button" id="export-print-transfer" class="button secondary">印刷データを保存</button>
+      <p id="print-transfer-status" class="print-transfer-status" role="status" aria-live="polite"></p>
+      <p class="print-transfer-note">ファイルは端末から直接保存・共有され、アプリのサーバーには送信しません。既存の商品情報は変更されません。</p>
+    </div>
     <div class="print-preview-actions"><button type="button" id="confirm-print" class="button primary">印刷画面を開く</button></div>
   </section>
 </div>
