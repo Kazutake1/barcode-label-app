@@ -6,8 +6,6 @@ const FOLDERS_KEY = 'barcode-label-folders-v1';
 const LABEL_HEIGHT_KEY = 'barcode-label-print-height-mm-v1';
 const MAX_FOLDERS = 50;
 const MAX_FOLDER_NAME = 30;
-const MAX_PRODUCT_TAGS=8;
-const MAX_TAG_LENGTH=20;
 const SCAN_LIBRARY_URL = 'https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js';
 const L = ['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
 const G = ['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111'];
@@ -222,33 +220,6 @@ function readRecords(){
   }catch{return []}
 }
 
-
-function normalizeTags(value,strict=false){
-  if(value===undefined||value===null||value==='')return [];
-  const parts=typeof value==='string'?value.split(/[,、，]/):Array.isArray(value)?value:null;
-  if(!parts){if(strict)throw Error('タグの形式が正しくありません。');return [];}
-  const result=[],seen=new Set();
-  for(const raw of parts){
-    if(typeof raw!=='string'){
-      if(strict)throw Error('タグは文字で指定してください。');
-      continue;
-    }
-    const tag=raw.trim();
-    if(!tag)continue;
-    if(tag.length>MAX_TAG_LENGTH||/[\x00-\x1f\x7f]/.test(tag)){
-      if(strict)throw Error('タグは1つ20文字以内にしてください。');
-      continue;
-    }
-    const key=tag.toLocaleLowerCase('ja');
-    if(seen.has(key))continue;
-    seen.add(key);result.push(tag);
-    if(result.length>MAX_PRODUCT_TAGS){
-      if(strict)throw Error('1商品につけられるタグは8個までです。');
-      return result.slice(0,MAX_PRODUCT_TAGS);
-    }
-  }
-  return result;
-}
 
 
 function validateFolderName(name){
@@ -484,7 +455,6 @@ function openCatalogFolder(folderId){
   catalogSelectionMode=false;
   selectedCatalogIds.clear();
   $('#catalog-search').value='';
-  $('#catalog-tag-filter').value='all';
   renderCatalog();
   window.scrollTo({top:0,behavior:'auto'});
 }
@@ -553,7 +523,7 @@ function readCatalog(){
       if(!x||typeof x.name!=='string'||!x.name.trim()||x.name.length>80||!codeInfo(x.code).ok||seen.has(x.code))return false;
       seen.add(x.code);return true;
     }).slice(0,500).map(x=>({
-      id:String(x.id||makeId()),code:x.code,name:x.name,nameBreak:normalizeNameBreak(x.name,x.nameBreak),tags:normalizeTags(x.tags),folderId:resolveFolderId(x.folderId),
+      id:String(x.id||makeId()),code:x.code,name:x.name,nameBreak:normalizeNameBreak(x.name,x.nameBreak),folderId:resolveFolderId(x.folderId),
       createdAt:typeof x.createdAt==='string'&&!Number.isNaN(Date.parse(x.createdAt))?x.createdAt:null,
       updatedAt:typeof x.updatedAt==='string'&&!Number.isNaN(Date.parse(x.updatedAt))?x.updatedAt:null
     }));
@@ -591,8 +561,8 @@ function upsertCatalog(data,originalCode=null){
   if(data.folderId!==undefined&&data.folderId!==null&&!folders.some(f=>f.id===data.folderId))throw Error('指定したフォルダが見つかりません。');
   const now=new Date().toISOString();
   const entry=original
-    ?{...original,code:data.code,name:data.name,nameBreak:normalizeNameBreak(data.name,data.nameBreak),tags:data.tags??original.tags??[],folderId:data.folderId===undefined?(original.folderId??null):data.folderId,updatedAt:now}
-    :{id:makeId(),code:data.code,name:data.name,nameBreak:normalizeNameBreak(data.name,data.nameBreak),tags:data.tags??[],folderId:data.folderId??null,createdAt:now,updatedAt:now};
+    ?{...original,code:data.code,name:data.name,nameBreak:normalizeNameBreak(data.name,data.nameBreak),folderId:data.folderId===undefined?(original.folderId??null):data.folderId,updatedAt:now}
+    :{id:makeId(),code:data.code,name:data.name,nameBreak:normalizeNameBreak(data.name,data.nameBreak),folderId:data.folderId??null,createdAt:now,updatedAt:now};
   const previous=catalog;
   catalog=original
     ?catalog.map(x=>x.id===original.id?entry:x)
@@ -619,7 +589,7 @@ function openCreatePage(){
 /* Manual order is stored as the existing catalog array: no new storage key. */
 function canSortProducts(){
  return activeFolder!=='all'&&!catalogSelectionMode
-   &&!$('#catalog-search').value.trim()&&$('#catalog-tag-filter').value==='all';
+   &&!$('#catalog-search').value.trim();
 }
 function reorderProduct(source,target,folderId,displayed){
  if(!Array.isArray(displayed)||folderId==='all')return false;
@@ -729,20 +699,10 @@ function installProductReordering(){
 
 function renderCatalog(){
   $('#catalog-count').textContent=catalog.length+'件';
-  const filter=$('#catalog-tag-filter'),previous=filter.value;
-  const distinct=[...new Set(catalog.flatMap(x=>x.tags??[]))].sort((a,b)=>a.localeCompare(b,'ja'));
-  filter.replaceChildren();
-  const all=document.createElement('option');all.value='all';all.textContent='すべてのタグ';filter.append(all);
-  const none=document.createElement('option');none.value='none';none.textContent='タグなし';filter.append(none);
-  for(const tag of distinct){
-    const option=document.createElement('option');option.value='tag:'+tag;option.textContent=tag;filter.append(option);
-  }
-  filter.value=[...filter.options].some(x=>x.value===previous)?previous:'all';
-  const term=$('#catalog-search').value.trim().toLocaleLowerCase(),selectedTag=filter.value;
+  const term=$('#catalog-search').value.trim().toLocaleLowerCase();
   const filtered=catalog.filter(x=>
     (activeFolder==='all'||(activeFolder==='none'&&!resolveFolderId(x.folderId))||x.folderId===activeFolder)
-    &&(x.name.toLocaleLowerCase().includes(term)||x.code.includes(term)||(x.tags??[]).some(t=>t.toLocaleLowerCase().includes(term)))
-    &&(selectedTag==='all'||(selectedTag==='none'&&!(x.tags??[]).length)||(selectedTag.startsWith('tag:')&&(x.tags??[]).includes(selectedTag.slice(4))))
+    &&(x.name.toLocaleLowerCase().includes(term)||x.code.includes(term))
   );
   const order=$('#catalog-sort').value;
   const compare=(a,b)=>a.localeCompare(b,'ja',{numeric:true});
@@ -795,16 +755,6 @@ function renderCatalog(){
     const name=document.createElement('div');name.className='catalog-name';name.textContent=product.name;
     const code=document.createElement('div');code.className='catalog-code';code.textContent=product.code;
     data.append(name,code);
-    if(product.tags?.length){
-      const tags=document.createElement('div');tags.className='catalog-tags';
-      for(const value of product.tags){
-        const chip=document.createElement('button');chip.type='button';chip.className='catalog-tag';chip.textContent=value;
-        chip.setAttribute('aria-label',value+'で絞り込み');
-        chip.addEventListener('click',()=>{$('#catalog-tag-filter').value='tag:'+value;selectedCatalogIds.clear();renderCatalog();});
-        tags.append(chip);
-      }
-      data.append(tags);
-    }
     const meta=document.createElement('div');meta.className='catalog-meta';
     const date=document.createElement('div');date.className='catalog-date';date.textContent=registrationLabel(product.createdAt);
     meta.append(date);
@@ -844,7 +794,6 @@ function renderCatalog(){
     edit.addEventListener('click',()=>{
       editingId=null;editingCatalogId=product.id;
       $('#code').value=product.code;$('#name').value=product.name;$('#qty').value='1';setNameBreakState(product.nameBreak);
-      $('#tags').value=(product.tags??[]).join('、');
       $('#folder-select').value=resolveFolderId(product.folderId)||'';
       $('#save').textContent='商品情報を更新';
       updatePreview();openCreatePage();$('#name').focus();
@@ -902,7 +851,7 @@ async function makeBackupDocument(){
     exportedAt:new Date().toISOString(),
     folders:folders.map(f=>({id:f.id,name:f.name})),
     savedProducts:catalog.map(x=>({
-      id:x.id,code:x.code,name:x.name,nameBreak:x.nameBreak??null,tags:x.tags??[],folderId:resolveFolderId(x.folderId),
+      id:x.id,code:x.code,name:x.name,nameBreak:x.nameBreak??null,folderId:resolveFolderId(x.folderId),
       createdAt:x.createdAt,updatedAt:x.updatedAt
     })),
     printList:records.map(x=>({
@@ -976,10 +925,9 @@ function validateBackupDocument(raw){
     }
     if(seenCodes.has(item.code))throw Error('バックアップに同じバーコード番号の商品が重複しています。');
     seenCodes.add(item.code);
-    const tags=normalizeTags(item.tags,true);
     const folderId=item.folderId??null;
     if(folderId!==null&&(!validFolderId(folderId)||!seenFolderIds.has(folderId)))throw Error('バックアップの商品が存在しないフォルダを参照しています。');
-    return {code:item.code,name:item.name,nameBreak:normalizeNameBreak(item.name,item.nameBreak),tags,folderId,createdAt:item.createdAt,updatedAt:item.updatedAt};
+    return {code:item.code,name:item.name,nameBreak:normalizeNameBreak(item.name,item.nameBreak),folderId,createdAt:item.createdAt,updatedAt:item.updatedAt};
   });
   const printItems=raw.printList.map((item,index)=>{
     if(!item||typeof item!=='object'||Array.isArray(item)||typeof item.code!=='string'||!codeInfo(item.code).ok
@@ -1088,8 +1036,7 @@ function formData(){
   if(tooManySpaceBreaks(name,nameBreak))throw Error('改行に使う全角スペースは1か所までにしてください。');
   const qty=Number($('#qty').value);
   if(!Number.isInteger(qty)||qty<1||qty>99)throw Error('印刷枚数は1～99で指定してください。');
-  const tags=normalizeTags($('#tags').value,true);
-  return {code:info.code,name,nameBreak,qty,tags,folderId:$('#folder-select').value||null};
+  return {code:info.code,name,nameBreak,qty,folderId:$('#folder-select').value||null};
 }
 function updatePreview(){
   const info=codeInfo($('#code').value), target=$('#preview'), status=$('#code-status');
@@ -1129,7 +1076,7 @@ function renderRecords(){
     detail.append(nm,sub);
     const actions=document.createElement('div');actions.className='item-actions';
     const edit=document.createElement('button');edit.type='button';edit.textContent='編集';
-    edit.addEventListener('click',()=>{editingCatalogId=null;editingId=rec.id;$('#code').value=rec.code;$('#name').value=rec.name;$('#qty').value=rec.qty;$('#tags').value=(catalog.find(x=>x.code===rec.code)?.tags??[]).join('、');$('#folder-select').value=resolveFolderId(catalog.find(x=>x.code===rec.code)?.folderId)||'';$('#save').textContent='変更を保存';setNameBreakState(rec.nameBreak??catalog.find(x=>x.code===rec.code)?.nameBreak??null);updatePreview();window.scrollTo({top:0,behavior:'smooth'});});
+    edit.addEventListener('click',()=>{editingCatalogId=null;editingId=rec.id;$('#code').value=rec.code;$('#name').value=rec.name;$('#qty').value=rec.qty;$('#folder-select').value=resolveFolderId(catalog.find(x=>x.code===rec.code)?.folderId)||'';$('#save').textContent='変更を保存';setNameBreakState(rec.nameBreak??catalog.find(x=>x.code===rec.code)?.nameBreak??null);updatePreview();window.scrollTo({top:0,behavior:'smooth'});});
     const del=document.createElement('button');del.type='button';del.textContent='削除';
     del.addEventListener('click',()=>{records=records.filter(x=>x.id!==rec.id);saveRecords();renderRecords();toast('リストから削除しました。');});
     actions.append(edit,del);wrapper.append(check,detail,actions);target.append(wrapper);
@@ -1407,7 +1354,6 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#print-preview-
 installFolderReordering();
 installProductReordering();
 $('#catalog-search').addEventListener('input',()=>{selectedCatalogIds.clear();renderCatalog();});
-$('#catalog-tag-filter').addEventListener('change',()=>{selectedCatalogIds.clear();renderCatalog();});
 $('#catalog-sort').addEventListener('change',renderCatalog);
 $('#folder-add-trigger').addEventListener('click',()=>{
   const form=$('#folder-create-form');
