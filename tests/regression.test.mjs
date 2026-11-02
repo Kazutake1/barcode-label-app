@@ -134,7 +134,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker stays on first-party resources',()=>{
- assert.ok(sw.includes('barcode-label-local-v62'));
+ assert.ok(sw.includes('barcode-label-local-v63'));
  assert.ok(sw.includes('origin!==self.location.origin'));
  assert.ok(sw.includes('if(req.method!=="GET")return'));
 });
