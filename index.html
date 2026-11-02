@@ -12,9 +12,9 @@
 <meta name="color-scheme" content="light dark">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js; style-src 'self'; img-src 'self' data: blob:; connect-src 'none'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>バーコードラベル作成</title>
-<link rel="stylesheet" href="style.css?v=65">
+<link rel="stylesheet" href="style.css?v=66">
 <link rel="manifest" href="manifest.webmanifest">
-<script src="app.js?v=65" defer></script>
+<script src="app.js?v=66" defer></script>
 </head>
 <body>
 <main class="app">
@@ -95,13 +95,18 @@
         <div class="catalog-location-header">
           <button id="catalog-back" type="button" class="catalog-back">‹ フォルダ</button>
           <div class="catalog-location-title">
-            <h3 id="catalog-current-name">すべての商品</h3>
+            <div class="catalog-folder-heading">
+              <h3 id="catalog-current-name">すべての商品</h3>
+              <details id="folder-page-actions" class="folder-page-actions" hidden>
+                <summary id="folder-page-menu-toggle" aria-label="フォルダの操作"><span aria-hidden="true">⋯</span></summary>
+                <div class="folder-page-menu">
+                  <button id="folder-page-edit" type="button">フォルダ名を編集</button>
+                  <button id="folder-page-delete" type="button">フォルダを削除</button>
+                </div>
+              </details>
+            </div>
           </div>
           <button id="catalog-select-mode" type="button" class="catalog-select-toggle" aria-pressed="false">選択</button>
-        </div>
-        <div id="folder-page-actions" class="folder-page-actions" aria-label="フォルダの操作" hidden>
-          <button id="folder-page-edit" type="button">編集</button>
-          <button id="folder-page-delete" type="button">削除</button>
         </div>
         <label for="catalog-search" class="catalog-search-label">商品を検索</label>
         <input id="catalog-search" type="search" autocomplete="off" placeholder="商品名・バーコードで検索">

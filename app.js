@@ -608,6 +608,7 @@ function upsertCatalog(data,originalCode=null,persist=true){
   return entry;
 }
 function showPage(page){
+  closeFolderMenu();
   const saved=page==='saved';
   $('#create-page').hidden=saved;
   $('#catalog-page').hidden=!saved;
@@ -755,8 +756,10 @@ function renderCatalog(){
   const currentName=activeFolder==='all'?'すべての商品':activeFolder==='none'?'未分類':folderName(activeFolder);
   $('#catalog-current-name').textContent=currentName;
   const editableFolder=catalogFolderOpened?folders.find(folder=>folder.id===activeFolder):null;
+  closeFolderMenu();
   $('#folder-page-actions').hidden=!editableFolder;
   if(editableFolder){
+    $('#folder-page-menu-toggle').setAttribute('aria-label',editableFolder.name+'の操作');
     $('#folder-page-edit').setAttribute('aria-label',editableFolder.name+'の名前を編集');
     $('#folder-page-delete').setAttribute('aria-label',editableFolder.name+'を削除');
   }
@@ -1513,7 +1516,21 @@ $('#catalog-back').addEventListener('click',()=>{
   renderCatalog();
   window.scrollTo({top:0,behavior:'auto'});
 });
+function closeFolderMenu(restoreFocus=false){
+  const menu=$('#folder-page-actions');
+  menu.open=false;
+  if(restoreFocus&&!menu.hidden)$('#folder-page-menu-toggle').focus();
+}
+document.addEventListener('click',event=>{
+  if(!$('#folder-page-actions').contains(event.target))closeFolderMenu();
+});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&$('#folder-page-actions').open){
+    event.preventDefault();closeFolderMenu(true);
+  }
+});
 $('#folder-page-edit').addEventListener('click',()=>{
+  closeFolderMenu(true);
   const folder=catalogFolderOpened?folders.find(f=>f.id===activeFolder):null;
   if(!folder)return;
   const next=window.prompt('フォルダ名を編集',folder.name);
@@ -1524,6 +1541,7 @@ $('#folder-page-edit').addEventListener('click',()=>{
   }catch(error){toast(error.message,'error');}
 });
 $('#folder-page-delete').addEventListener('click',()=>{
+  closeFolderMenu(true);
   const folder=catalogFolderOpened?folders.find(f=>f.id===activeFolder):null;
   if(!folder)return;
   try{
@@ -1532,6 +1550,7 @@ $('#folder-page-delete').addEventListener('click',()=>{
       selectedCatalogIds.clear();
       renderCatalog();
       toast('フォルダを削除しました。中の商品は未分類に移動しました。');
+      $('#folder-add-trigger').focus();
     }
   }catch(error){toast(error.message,'error');}
 });
