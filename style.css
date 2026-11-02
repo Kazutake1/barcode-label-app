@@ -715,6 +715,16 @@ body.print-preview-open{overflow:hidden}
   height:20px
 }
 
+/* v1.42: Keep the complete product name on exactly one line.
+   JavaScript reduces its font size only when it exceeds the available width.
+   This applies to the editor, actual-size print preview and physical print. */
+.product-label .name-cell{min-width:0;overflow:hidden}
+.product-label .label-name-text{
+  display:block;max-width:100%;min-width:0;
+  white-space:nowrap;word-break:normal;overflow-wrap:normal;
+  flex:0 1 auto
+}
+
 /* v1.39: consistent checkbox appearance on iOS/iPadOS Safari (light and dark). */
 input[type="checkbox"]{
   -webkit-appearance:none!important;
