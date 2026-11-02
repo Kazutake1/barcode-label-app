@@ -45,8 +45,6 @@
         <label for="name">商品名</label>
         <input id="name" name="name" maxlength="80" autocomplete="off" placeholder="例：お茶 600ml" required>
         <p id="name-break-status" class="name-break-status" role="status">全角スペースで改行（15mm以上・1か所まで）</p>
-        <label for="tags">タグ（任意・最大8個）</label>
-        <input id="tags" name="tags" maxlength="180" autocomplete="off" placeholder="例：飲料、店舗A">
         <label for="folder-select">保存先フォルダ</label>
         <select id="folder-select" name="folder"><option value="">未分類</option></select>
         <label for="qty">印刷枚数</label>
@@ -106,9 +104,8 @@
           <button id="folder-page-delete" type="button">削除</button>
         </div>
         <label for="catalog-search" class="catalog-search-label">商品を検索</label>
-        <input id="catalog-search" type="search" autocomplete="off" placeholder="商品名・バーコード・タグで検索">
+        <input id="catalog-search" type="search" autocomplete="off" placeholder="商品名・バーコードで検索">
         <div class="catalog-controls">
-          <div><label for="catalog-tag-filter">タグ</label><select id="catalog-tag-filter"><option value="all">すべてのタグ</option></select></div>
           <div><label for="catalog-sort">並べ替え</label><select id="catalog-sort">
             <option value="manual">手動順</option>
             <option value="recent">登録日が新しい順</option>

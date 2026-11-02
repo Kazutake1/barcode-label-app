@@ -186,15 +186,11 @@ body.print-preview-open{overflow:hidden}
 @media(max-width:480px){.backup-actions{grid-template-columns:1fr}}
 @media print{.backup-section{display:none!important}}
 
-/* Searchable saved-product tags and sorting; existing print CSS unchanged. */
-.tag-hint{font-size:11px;color:#718093;margin:5px 0 12px}
-.catalog-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+/* Saved-product sorting; existing print CSS unchanged. */
+.catalog-controls{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
 .catalog-controls label{margin:0 0 6px!important}
 .catalog-controls select{height:43px;padding:8px 10px;font-size:14px}
 .catalog-results{font-size:12px;color:#62748a;margin:12px 0 2px}
-.catalog-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
-.catalog-tag{max-width:100%;padding:4px 9px;background:#e8f1ff;color:#1a579f;border:1px solid #c9dcfb;border-radius:99px;font-size:11px;line-height:1.3;overflow-wrap:anywhere;cursor:pointer}
-.catalog-tag:focus-visible{outline:2px solid #1769d4;outline-offset:2px}
 @media(max-width:480px){.catalog-controls{grid-template-columns:1fr;gap:10px}}
 
 /* One-level folders; mobile-friendly local product organization. */
