@@ -4,8 +4,6 @@ const STORE_KEY = 'barcode-label-local-v1';
 const CATALOG_KEY = 'barcode-label-catalog-v1';
 const FOLDERS_KEY = 'barcode-label-folders-v1';
 const LABEL_HEIGHT_KEY = 'barcode-label-print-height-mm-v1';
-const PRINT_PHOTOS_KEY = 'barcode-label-print-with-photos-v1';
-const PhotoStore = window.BarcodePhotos;
 const MAX_FOLDERS = 50;
 const MAX_FOLDER_NAME = 30;
 const MAX_PRODUCT_TAGS=8;
@@ -38,13 +36,8 @@ let decoderLoading = null;
 let toastTimer = null;
 let stagedPrintItems = [];
 let labelHeightMm = readLabelHeight();
-let printPhotosEnabled = readPrintPhotos();
-let pendingPhoto;
-let currentPhotoData = null;
-let photoEditToken = 0;
 let printBusy = false;
 let productSaving = false;
-let photoProcessing = Promise.resolve();
 
 function normalizeCode(value) {
   const translated = String(value).replace(/[０-９]/g, ch=>String(ch.charCodeAt(0)-0xff10));
@@ -102,104 +95,17 @@ function createBarcodeSvg(code,compact=false) {
   }
   return svg;
 }
-function createLabel({code,name,imageData},compact=false,withPhoto=false){
+function createLabel({code,name},compact=false){
   const container=document.createElement('div');container.className='product-label';
   const body=document.createElement('div');body.className='label-body';
   const nameCell=document.createElement('div');nameCell.className='name-cell';
-  if(withPhoto&&PhotoStore.valid(imageData)){
-    container.classList.add('has-photo');
-    const img=document.createElement('img');img.className='label-product-photo';img.alt='';img.src=imageData;
-    const title=document.createElement('span');title.className='label-name-text';title.textContent=name||'商品名';
-    nameCell.append(img,title);
-  }else nameCell.textContent=name||'商品名';
+  nameCell.textContent=name||'商品名';
   const barcodeCell=document.createElement('div');barcodeCell.className='barcode-cell';
   barcodeCell.append(createBarcodeSvg(code,compact));
   body.append(nameCell,barcodeCell);
 
   container.append(body);
   return container;
-}
-
-/* Photos are JPEG data URLs stored in IndexedDB, keyed by stable product ID.
-   Product and print-list localStorage formats do not change. */
-function readPrintPhotos(){
-  try{return localStorage.getItem(PRINT_PHOTOS_KEY)==='true';}catch{return false;}
-}
-function syncPrintPhotoControls(){
-  for(const id of ['#print-photos','#preview-print-photos']){
-    const el=$(id);el.checked=printPhotosEnabled;el.disabled=labelHeightMm<20;
-  }
-}
-async function setPrintPhotos(value){
-  printPhotosEnabled=!!value;
-  try{localStorage.setItem(PRINT_PHOTOS_KEY,String(printPhotosEnabled));}
-  catch{toast('画像印刷設定を記憶できませんでした。','error');}
-  syncPrintPhotoControls();
-  if(!$('#print-preview-overlay').hidden&&stagedPrintItems.length){
-    try{if(printPhotosEnabled&&labelHeightMm>=20)await attachProductPhotos(stagedPrintItems);buildPrintSheets();}
-    catch{toast('商品画像を読み込めませんでした。','error');}
-  }
-}
-function showEditorPhoto(){
-  const image=pendingPhoto===undefined?currentPhotoData:pendingPhoto;
-  const exists=PhotoStore.valid(image);
-  $('#product-photo-current').hidden=!exists;
-  $('#product-photo-remove').hidden=!exists;
-  $('#product-photo-edit').hidden=!exists;
-  if(exists)$('#product-photo-thumb').src=image;
-  else $('#product-photo-thumb').removeAttribute('src');
-  $('#product-photo-status').textContent=exists?'写真はこの端末内に保存されます。':'写真は未登録です。';
-  updatePreview();
-}
-async function loadEditorPhoto(id){
-  const token=++photoEditToken;
-  pendingPhoto=undefined;currentPhotoData=null;
-  $('#product-photo-status').textContent='写真を読み込み中…';
-  $('#product-photo-current').hidden=true;$('#product-photo-remove').hidden=true;$('#product-photo-edit').hidden=true;
-  try{
-    const image=await PhotoStore.get(id);
-    if(token!==photoEditToken)return;
-    currentPhotoData=image;showEditorPhoto();
-  }catch{
-    if(token===photoEditToken)$('#product-photo-status').textContent='写真を読み込めませんでした。';
-  }
-}
-async function chooseProductPhoto(file){
-  if(!file)return;
-  const token=photoEditToken;
-  $('#product-photo-status').textContent='写真を開いています…';
-  try{
-    const data=await window.BarcodePhotoEditor.open(file);
-    if(token!==photoEditToken)return;
-    if(data)pendingPhoto=data;
-    showEditorPhoto(); // Cancelling leaves the existing photo unchanged.
-  }catch(error){
-    if(token===photoEditToken)$('#product-photo-status').textContent=error?.message||'写真を編集できませんでした。';
-  }
-}
-async function editCurrentProductPhoto(){
-  const token=photoEditToken;
-  const image=pendingPhoto===undefined?currentPhotoData:pendingPhoto;
-  if(!PhotoStore.valid(image))return;
-  try{
-    const data=await window.BarcodePhotoEditor.open(image);
-    if(token!==photoEditToken)return;
-    if(data){pendingPhoto=data;showEditorPhoto();}
-  }catch(error){
-    if(token===photoEditToken)$('#product-photo-status').textContent=error?.message||'写真を編集できませんでした。';
-  }
-}
-async function saveEditedPhoto(productId){
-  if(pendingPhoto===undefined)return;
-  if(pendingPhoto===null)await PhotoStore.remove(productId);
-  else await PhotoStore.put(productId,pendingPhoto);
-}
-async function attachProductPhotos(items){
-  for(const item of items){
-    if(item.photoOverride||PhotoStore.valid(item.imageData))continue;
-    const p=catalog.find(x=>x.code===item.code);
-    if(p)item.imageData=await PhotoStore.get(p.id);
-  }
 }
 
 function readRecords(){
@@ -811,10 +717,6 @@ function renderCatalog(){
         }
       }catch(error){toast(error.message,'error');}
     });
-    const thumbnail=document.createElement('img');thumbnail.className='catalog-photo-thumb';thumbnail.alt='';
-    PhotoStore.get(product.id).then(image=>{
-      if(image&&row.isConnected){thumbnail.src=image;summary.prepend(thumbnail);}
-    }).catch(()=>{});
     summary.append(data,meta);line.append(summary);
     const menu=document.createElement('details');menu.className='product-menu';
     const trigger=document.createElement('summary');trigger.textContent='…';
@@ -839,7 +741,6 @@ function renderCatalog(){
       $('#tags').value=(product.tags??[]).join('、');
       $('#folder-select').value=resolveFolderId(product.folderId)||'';
       $('#save').textContent='商品情報を更新';
-      loadEditorPhoto(product.id);
       updatePreview();openCreatePage();$('#name').focus();
     });
     const moveLabel=document.createElement('label');moveLabel.className='menu-move-label';
@@ -864,7 +765,6 @@ function renderCatalog(){
       const old=catalog;catalog=catalog.filter(x=>x.id!==product.id);
       if(!saveCatalog()){catalog=old;return;}
       if(editingCatalogId===product.id)clearForm();
-      PhotoStore.remove(product.id).catch(()=>toast('商品削除後に写真の削除ができませんでした。','error'));
       selectedCatalogIds.delete(product.id);renderCatalog();toast('保存商品から削除しました。');
     });
     actions.append(add,edit,moveLabel,del);
@@ -884,17 +784,11 @@ function backupStatus(message,isError=false){
   target.className=isError?'backup-status error':'backup-status';
 }
 async function makeBackupDocument(){
-  const photos=[];
-  for(const product of catalog){
-    const data=await PhotoStore.get(product.id);
-    if(data)photos.push({code:product.code,data});
-  }
   return {
     format:BACKUP_FORMAT,
     version:BACKUP_VERSION,
     exportedAt:new Date().toISOString(),
     folders:folders.map(f=>({id:f.id,name:f.name})),
-    photos,
     savedProducts:catalog.map(x=>({
       id:x.id,code:x.code,name:x.name,tags:x.tags??[],folderId:resolveFolderId(x.folderId),
       createdAt:x.createdAt,updatedAt:x.updatedAt
@@ -910,7 +804,7 @@ async function exportBackup(){
   }
   let documentData;
   try{documentData=await makeBackupDocument();}
-  catch{backupStatus('写真を含むバックアップを作成できませんでした。',true);return;}
+  catch{backupStatus('バックアップを作成できませんでした。',true);return;}
   const blob=new Blob([JSON.stringify(documentData,null,2)],{type:'application/json'});
   const dateParts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
   const localDay=[dateParts.year,dateParts.month,dateParts.day].join('-');
@@ -926,8 +820,7 @@ async function exportBackup(){
           return;
         }catch(error){
           if(error?.name==='AbortError'){backupStatus('バックアップの保存をキャンセルしました。');return;}
-          // Photo backup creation is asynchronous; Safari may have lost user activation.
-          // Fall back to the ordinary file download instead of blocking backups.
+          // If sharing fails, fall back to the ordinary file download.
         }
       }
     }
@@ -976,15 +869,6 @@ function validateBackupDocument(raw){
     if(folderId!==null&&(!validFolderId(folderId)||!seenFolderIds.has(folderId)))throw Error('バックアップの商品が存在しないフォルダを参照しています。');
     return {code:item.code,name:item.name,tags,folderId,createdAt:item.createdAt,updatedAt:item.updatedAt};
   });
-  const photos=raw.photos===undefined?[]:raw.photos;
-  if(!Array.isArray(photos)||photos.length>500)throw Error('バックアップの写真件数が正しくありません。');
-  const seenPhotoCodes=new Set();
-  const parsedPhotos=photos.map(photo=>{
-    if(!photo||typeof photo.code!=='string'||!seenCodes.has(photo.code)||seenPhotoCodes.has(photo.code)||!PhotoStore.valid(photo.data)){
-      throw Error('バックアップ内の写真データが正しくありません。');
-    }
-    seenPhotoCodes.add(photo.code);return {code:photo.code,data:photo.data};
-  });
   const printItems=raw.printList.map((item,index)=>{
     if(!item||typeof item!=='object'||Array.isArray(item)||typeof item.code!=='string'||!codeInfo(item.code).ok
        ||!validName(item.name)||!Number.isInteger(item.qty)||item.qty<1||item.qty>99||typeof item.selected!=='boolean'){
@@ -992,7 +876,7 @@ function validateBackupDocument(raw){
     }
     return {code:item.code,name:item.name,qty:item.qty,selected:item.selected};
   });
-  return {folders:incomingFolders,products,printItems,photos:parsedPhotos};
+  return {folders:incomingFolders,products,printItems};
 }
 function mergeBackup(backup){
   const nextFolders=[...folders],folderMap=new Map();
@@ -1068,14 +952,7 @@ async function restoreBackup(file){
     );
     if(!answer){backupStatus('復元をキャンセルしました。');return;}
     const result=mergeBackup(parsed);
-    let restoredPhotos=0;
-    for(const photo of parsed.photos){
-      const product=catalog.find(x=>x.code===photo.code);
-      if(product&&!await PhotoStore.get(product.id)){
-        await PhotoStore.put(product.id,photo.data);restoredPhotos++;
-      }
-    }
-    backupStatus(`復元完了：新規フォルダ${result.folders}個、商品${result.saved}件、印刷リスト${result.print}件・写真${restoredPhotos}枚を追加しました。重複商品${result.skipped}件は変更していません。`);
+    backupStatus(`復元完了：新規フォルダ${result.folders}個、商品${result.saved}件、印刷リスト${result.print}件を追加しました。重複商品${result.skipped}件は変更していません。`);
     clearForm();
   }catch(error){
     backupStatus(error?.message||'バックアップを読み込めませんでした。',true);
@@ -1104,8 +981,7 @@ function updatePreview(){
   if(info.ok){
     status.textContent=`${info.type} ・ チェックデジット確認済み`;
     status.className='hint valid';
-    const image=pendingPhoto===undefined?currentPhotoData:pendingPhoto;
-    target.append(createLabel({code:info.code,name:$('#name').value.trim(),imageData:image},false,!!image));
+    target.append(createLabel({code:info.code,name:$('#name').value.trim()}));
     $('#print-one').disabled=!$('#name').value.trim();
   }else{
     status.textContent=info.error==='番号を入力してください。'?'JAN-13（13桁）、JAN-8（8桁）、UPC-A（12桁）に対応':info.error;
@@ -1116,11 +992,7 @@ function updatePreview(){
 }
 function clearForm(){
   editingId=null;editingCatalogId=null;
-  photoEditToken++;pendingPhoto=undefined;currentPhotoData=null;
   HTMLFormElement.prototype.reset.call($('#editor'));$('#qty').value='1';$('#folder-select').value='';
-  $('#product-photo-current').hidden=true;$('#product-photo-remove').hidden=true;$('#product-photo-edit').hidden=true;
-  $('#product-photo-thumb').removeAttribute('src');
-  $('#product-photo-status').textContent='写真は未登録です。';
   $('#save').textContent='保存して印刷リストに追加';updatePreview();
 }
 function renderRecords(){
@@ -1137,7 +1009,7 @@ function renderRecords(){
     detail.append(nm,sub);
     const actions=document.createElement('div');actions.className='item-actions';
     const edit=document.createElement('button');edit.type='button';edit.textContent='編集';
-    edit.addEventListener('click',()=>{editingCatalogId=null;editingId=rec.id;$('#code').value=rec.code;$('#name').value=rec.name;$('#qty').value=rec.qty;$('#tags').value=(catalog.find(x=>x.code===rec.code)?.tags??[]).join('、');$('#folder-select').value=resolveFolderId(catalog.find(x=>x.code===rec.code)?.folderId)||'';$('#save').textContent='変更を保存';const product=catalog.find(x=>x.code===rec.code);if(product)loadEditorPhoto(product.id);updatePreview();window.scrollTo({top:0,behavior:'smooth'});});
+    edit.addEventListener('click',()=>{editingCatalogId=null;editingId=rec.id;$('#code').value=rec.code;$('#name').value=rec.name;$('#qty').value=rec.qty;$('#tags').value=(catalog.find(x=>x.code===rec.code)?.tags??[]).join('、');$('#folder-select').value=resolveFolderId(catalog.find(x=>x.code===rec.code)?.folderId)||'';$('#save').textContent='変更を保存';updatePreview();window.scrollTo({top:0,behavior:'smooth'});});
     const del=document.createElement('button');del.type='button';del.textContent='削除';
     del.addEventListener('click',()=>{records=records.filter(x=>x.id!==rec.id);saveRecords();renderRecords();toast('リストから削除しました。');});
     actions.append(edit,del);wrapper.append(check,detail,actions);target.append(wrapper);
@@ -1166,13 +1038,7 @@ function setLabelHeight(value){
   $('#preview-label-height').value=String(labelHeightMm);
   try{localStorage.setItem(LABEL_HEIGHT_KEY,String(labelHeightMm));}
   catch{toast('ラベルの高さを記憶できませんでした。今回の印刷には反映されます。','error');}
-  syncPrintPhotoControls();
-  if(!$('#print-preview-overlay').hidden&&stagedPrintItems.length){
-    if(printPhotosEnabled&&labelHeightMm>=20){
-      attachProductPhotos(stagedPrintItems).then(buildPrintSheets)
-        .catch(()=>toast('写真を読み込めませんでした。','error'));
-    }else buildPrintSheets();
-  }
+  if(!$('#print-preview-overlay').hidden&&stagedPrintItems.length)buildPrintSheets();
 }
 async function printLabels(items){
   const total=items.reduce((sum,item)=>sum+item.qty,0);
@@ -1182,14 +1048,13 @@ async function printLabels(items){
   printBusy=true;printFeedback('');
   try{
     stagedPrintItems=items.map(item=>({...item}));
-    if(printPhotosEnabled&&labelHeightMm>=20)await attachProductPhotos(stagedPrintItems);
     buildPrintSheets();
     $('#print-preview-overlay').hidden=false;
     document.body.classList.add('print-preview-open');
     scalePreviewPages();
     $('#close-print-preview').focus();
   }catch{
-    printFeedback('写真を読み込めませんでした。画像印刷をOFFにすると従来のラベルで印刷できます。');
+    printFeedback('印刷プレビューを作成できませんでした。');
   }finally{printBusy=false;}
 }
 function buildPrintSheets(){
@@ -1217,7 +1082,7 @@ function buildPrintSheets(){
     page.dataset.labelHeight=String(labelHeightMm);
     const grid=document.createElement('div');
     grid.className='paper-label-grid';
-    for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item,labelHeightMm<=10,printPhotosEnabled&&labelHeightMm>=20));
+    for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item,labelHeightMm<=10));
     page.append(grid);
     target.append(page);
 
@@ -1228,15 +1093,11 @@ function buildPrintSheets(){
   }
   $('#preview-paper').value=paper;
   $('#preview-label-height').value=String(labelHeightMm);
-  syncPrintPhotoControls();
-  $('#print-preview-meta').textContent=`${paper}・縦向き・2列・ラベルの高さ${labelHeightMm}mm・画像印刷${printPhotosEnabled&&labelHeightMm>=20?'ON':'OFF'} / ${stagedPrintItems.length}商品・合計${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
+  $('#print-preview-meta').textContent=`${paper}・縦向き・2列・ラベルの高さ${labelHeightMm}mm / ${stagedPrintItems.length}商品・合計${flat.length}枚・${Math.ceil(flat.length/perPage)}ページ`;
   const standalone=window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
   $('#print-guidance').textContent=standalone
     ? 'ホーム画面のアプリから印刷画面が開かない場合は、SafariでこのサイトのURLを直接開いてください。プリンターの用紙サイズはアプリと一致させてください。'
     : '「印刷画面を開く」の後、プリンターの用紙サイズを上で選んだサイズに合わせ、倍率を100%にしてください。';
-  if(printPhotosEnabled&&labelHeightMm<20){
-    $('#print-guidance').textContent='商品画像は20mm以上で使用できます。 '+$('#print-guidance').textContent;
-  }
   if(labelHeightMm<=10){
     $('#print-guidance').textContent=labelHeightMm+'mmはバーコード下の数字を省略しています。商品名が読みにくくなる、またはバーコードがスキャンできない可能性があります。必ず実寸で試し刷りし、レジで読み取れることをご確認ください。 '+$('#print-guidance').textContent;
   }else if(labelHeightMm===15){
@@ -1316,27 +1177,11 @@ function stopCamera(){
   video.srcObject=null;
   $('#scanner').hidden=true;
 }
-async function scanPhoto(file){
-  if(!file)return;
-  if(!file.type.startsWith('image/')){toast('画像ファイルを選択してください。','error');return;}
-  if(file.size>18*1024*1024){toast('18MB以下の画像を選んでください。','error');return;}
-  let url=null;
-  try{
-    toast('画像のバーコードを確認しています。');
-    await loadDecoder();
-    url=URL.createObjectURL(file);
-    const imageReader=new window.ZXingBrowser.BrowserMultiFormatReader();
-    const result=await imageReader.decodeFromImageUrl(url);
-    handleScanValue(result.getText());
-  }catch(error){toast('画像から読み取れませんでした。明るく、バーコード全体が写った写真を使うか、番号を入力してください。','error');}
-  finally{if(url)URL.revokeObjectURL(url);$('#photo-input').value='';}
-}
 $('#editor').addEventListener('submit',async e=>{
   e.preventDefault();
   if(productSaving)return;
   productSaving=true;$('#save').disabled=true;
   try{
-    await photoProcessing;
     const data=formData();
     let product;
     let message='商品とバーコードを保存し、印刷リストに追加しました。';
@@ -1359,12 +1204,6 @@ $('#editor').addEventListener('submit',async e=>{
       records.unshift({id:makeId(),code:data.code,name:data.name,qty:data.qty,selected:true});
     }
     saveRecords();renderRecords();
-    try{await saveEditedPhoto(product.id);}
-    catch{
-      editingCatalogId=product.id;editingId=null;$('#save').textContent='商品情報を更新';
-      toast('商品情報は保存しましたが、写真の保存に失敗しました。写真を確認して再保存してください。','error');
-      return;
-    }
     renderCatalog();clearForm();toast(message);
   }catch(err){toast(err.message,'error');}
   finally{productSaving=false;$('#save').disabled=false;}
@@ -1374,28 +1213,14 @@ $('#name').addEventListener('input',updatePreview);
 $('#reset').addEventListener('click',clearForm);
 $('#minus').addEventListener('click',()=>{$('#qty').value=Math.max(1,Number($('#qty').value||1)-1);});
 $('#plus').addEventListener('click',()=>{$('#qty').value=Math.min(99,Number($('#qty').value||1)+1);});
-$('#print-one').addEventListener('click',async()=>{
-  try{
-    await photoProcessing;
-    const image=pendingPhoto===undefined?currentPhotoData:pendingPhoto;
-    printLabels([{...formData(),imageData:image,photoOverride:pendingPhoto!==undefined||currentPhotoData!==null}]);
-  }catch(err){toast(err.message,'error');}
+$('#print-one').addEventListener('click',()=>{
+  try{printLabels([formData()]);}catch(err){toast(err.message,'error');}
 });
 $('#print-all').addEventListener('click',()=>printLabels(records.filter(r=>r.selected)));
 $('#close-print-preview').addEventListener('click',closePrintPreview);
 $('#confirm-print').addEventListener('click',confirmPrint);
 $('#preview-paper').addEventListener('change',e=>{$('#paper').value=e.target.value;buildPrintSheets();});
 $('#label-height').addEventListener('change',e=>setLabelHeight(e.target.value));
-$('#print-photos').addEventListener('change',e=>setPrintPhotos(e.target.checked));
-$('#preview-print-photos').addEventListener('change',e=>setPrintPhotos(e.target.checked));
-for(const id of ['#product-photo-camera','#product-photo-file']){
-  $(id).addEventListener('change',e=>{
-    photoProcessing=chooseProductPhoto(e.target.files?.[0]);
-    photoProcessing.finally(()=>{e.target.value='';});
-  });
-}
-$('#product-photo-remove').addEventListener('click',()=>{pendingPhoto=null;showEditorPhoto();});
-$('#product-photo-edit').addEventListener('click',()=>{photoProcessing=editCurrentProductPhoto();});
 $('#preview-label-height').addEventListener('change',e=>setLabelHeight(e.target.value));
 window.addEventListener('resize',scalePreviewPages);
 $('#print-preview-overlay').addEventListener('click',e=>{if(e.target.id==='print-preview-overlay')closePrintPreview();});
@@ -1480,11 +1305,9 @@ $('#clear-all').addEventListener('click',()=>{
 });
 $('#start-camera').addEventListener('click',startCamera);
 $('#stop-camera').addEventListener('click',stopCamera);
-$('#photo-input').addEventListener('change',e=>scanPhoto(e.target.files?.[0]));
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopCamera();});
 window.addEventListener('pagehide',stopCamera);
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 $('#label-height').value=String(labelHeightMm);
 $('#preview-label-height').value=String(labelHeightMm);
-syncPrintPhotoControls();
 migrateOldProducts();renderRecords();renderCatalog();updatePreview();showPage(window.location.hash==='#saved'?'saved':'create');
