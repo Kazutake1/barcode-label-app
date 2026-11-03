@@ -1296,6 +1296,14 @@ async function printLabels(items){
     printFeedback('印刷プレビューを作成できませんでした。');
   }finally{printBusy=false;}
 }
+function printPagination(paper,height,layout){
+  const isB5=paper==='B5',columns=layout==='vertical'?3:2;
+  // Keep the existing vertical spacing and row limits on both paper sizes.
+  const paperHeight=isB5?257:297,pagePadding=isB5?7:8,gap=3;
+  const fitRows=Math.floor((paperHeight-2*pagePadding+gap)/(height+gap));
+  const rows=Math.max(1,height<15?fitRows:Math.min(isB5?7:8,fitRows));
+  return {columns,perPage:columns*rows};
+}
 function buildPrintSheets(){
   const paper=$('#paper').value;
   const isB5=paper==='B5';
@@ -1308,16 +1316,12 @@ function buildPrintSheets(){
   target.className='print-sheet '+(isB5?'b5':'a4');
   const preview=$('#print-preview-pages');
   preview.replaceChildren();
-  // 3mm gap and the actual paper padding determine how many rows fit.
-  // Preserve the original pagination at 15mm and above. Tiny labels (5/10mm)
-  // use additional rows, while always respecting the physical paper dimensions.
-  const paperHeight=isB5?257:297, pagePadding=isB5?7:8, gap=3;
-  const fitRows=Math.floor((paperHeight-2*pagePadding+gap)/(labelHeightMm+gap));
-  const perPage=2*Math.max(1,labelHeightMm<15?fitRows:Math.min(isB5?7:8,fitRows));
+  const {columns,perPage}=printPagination(paper,labelHeightMm,labelLayout);
   for(let offset=0;offset<flat.length;offset+=perPage){
     const page=document.createElement('div');
     page.className='paper-page'+(isB5?' b5':'');
     page.style.setProperty('--label-height',labelHeightMm+'mm');
+    page.style.setProperty('--label-columns',String(columns));
     page.dataset.labelHeight=String(labelHeightMm);
     const grid=document.createElement('div');
     grid.className='paper-label-grid';

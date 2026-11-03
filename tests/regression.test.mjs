@@ -135,7 +135,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v68'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v69'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
@@ -244,8 +244,8 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=68',scope).href,Buffer.from(app)],
-  [new URL('./style.css?v=68',scope).href,Buffer.from(css)],
+  [new URL('./app.js?v=69',scope).href,Buffer.from(app)],
+  [new URL('./style.css?v=69',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
  const fallback=new Map();
@@ -275,7 +275,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=68'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=69'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -287,14 +287,14 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=68','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=69','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=68',app],['style.css?v=68',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=69',app],['style.css?v=69',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
@@ -327,4 +327,14 @@ test('layout selector appears next to height in both print toolbars',()=>{
  }
  assert.ok(app.includes("container.dataset.layout=labelLayout"));
  assert.ok(css.includes('grid-template-rows:minmax(0,22fr) minmax(0,78fr)'));
+});
+
+test('vertical three-column sheets increase capacity without changing horizontal paging',()=>{
+ const {printPagination}=compile(segment('function printPagination(','function buildPrintSheets('),'printPagination');
+ assert.deepEqual(printPagination('A4',20,'horizontal'),{columns:2,perPage:16});
+ assert.deepEqual(printPagination('A4',20,'vertical'),{columns:3,perPage:24});
+ assert.deepEqual(printPagination('B5',20,'horizontal'),{columns:2,perPage:14});
+ assert.deepEqual(printPagination('B5',20,'vertical'),{columns:3,perPage:21});
+ assert.deepEqual(printPagination('A4',5,'vertical'),{columns:3,perPage:105});
+ assert.deepEqual(printPagination('B5',50,'vertical'),{columns:3,perPage:12});
 });
