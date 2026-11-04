@@ -162,7 +162,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v70'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v71'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
@@ -271,8 +271,8 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=70',scope).href,Buffer.from(app)],
-  [new URL('./style.css?v=70',scope).href,Buffer.from(css)],
+  [new URL('./app.js?v=71',scope).href,Buffer.from(app)],
+  [new URL('./style.css?v=71',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
  const fallback=new Map();
@@ -302,7 +302,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=70'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=71'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -314,14 +314,14 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=70','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=71','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=70',app],['style.css?v=70',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=71',app],['style.css?v=71',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
@@ -347,6 +347,16 @@ test('label layout defaults to horizontal and remembers only supported values',(
  }
  const unavailable=compile(source,'readLabelLayout',{LABEL_LAYOUT_KEY:'layout',localStorage:{getItem(){throw Error('blocked')}}});
  assert.equal(unavailable.readLabelLayout(),'horizontal');
+});
+test('horizontal label name moves closer without changing barcode or vertical labels',()=>{
+  const horizontalRule=/\.paper-page \.product-label\[data-layout="horizontal"\] \.label-name-text,\s*\.preview-stage \.product-label\[data-layout="horizontal"\] \.label-name-text\s*\{([^}]+)\}/;
+  const match=css.match(horizontalRule);
+  assert.ok(match,'horizontal-only print name positioning rule exists');
+  assert.match(match[1],/transform:translateX\(2mm\)/);
+  assert.match(match[1],/max-width:calc\(100% - 2mm\)/);
+  assert.ok(!css.includes('.product-label[data-layout="vertical"] .label-name-text'));
+  assert.ok(css.includes('.paper-page .product-label svg{width:auto!important;height:var(--symbol-height,26.73mm)!important;'));
+  assert.ok(app.includes("container.dataset.layout=labelLayout"));
 });
 test('layout selector appears next to height in both print toolbars',()=>{
  for(const id of ['label-layout','preview-label-layout']){
