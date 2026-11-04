@@ -18,7 +18,5 @@ jobs:
           node --version
           node --check app.js
           node --check sw.js
-      - name: Record complete release SHA-256 values
-        run: sha256sum index.html app.js style.css
       - name: Run automated regression and security tests
         run: node --test tests/regression.test.mjs
