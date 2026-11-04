@@ -23,7 +23,7 @@ const doc={createElementNS(ns,tag){
  return {tag,attributes:{},children:[],setAttribute(k,v){this.attributes[k]=String(v);},
   append(...items){this.children.push(...items);},textContent:''};
 }};
-const barcode=compile(table+barcodePart,'checkDigit,codeInfo,barcodeBits,createBarcodeSvg',{document:doc});
+const barcode=compile(table+barcodePart,'checkDigit,codeInfo,barcodeBits,createBarcodeSvg,printBarcodeMagnification',{document:doc});
 const backup=compile(
  'const MAX_FOLDER_NAME=30; const MAX_FOLDERS=50;'+
  "const BACKUP_FORMAT='barcode-label-app-backup'; const BACKUP_VERSION=1;"+
@@ -45,6 +45,33 @@ test('200 canonical JAN-13, JAN-8, UPC-A patterns',()=>{
   assert.equal(bits.length,length===8?67:95);
   assert.ok(bits.startsWith('101')&&bits.endsWith('101'));
  }
+});
+test('printed barcode magnification is proportional and stays within 20/30mm labels',()=>{
+  const code='4901234567894';
+  for(const height of [5,10,15])assert.equal(barcode.printBarcodeMagnification(height,height<=10),1);
+  for(const height of [20,25])assert.equal(barcode.printBarcodeMagnification(height,false),1.07);
+  for(const height of [30,35,40,45,50])assert.equal(barcode.printBarcodeMagnification(height,false),12/11);
+  const original=barcode.createBarcodeSvg(code,false,true);
+  const medium=barcode.createBarcodeSvg(code,false,true,barcode.printBarcodeMagnification(20,false));
+  const tall=barcode.createBarcodeSvg(code,false,false,barcode.printBarcodeMagnification(30,false));
+  assert.equal(original.attributes.width,'37.29mm');
+  assert.equal(original.attributes.height,'17.82mm');
+  assert.equal(medium.attributes.width,'39.90mm');
+  assert.equal(medium.attributes.height,'19.07mm');
+  assert.equal(tall.attributes.width,'40.68mm');
+  assert.equal(tall.attributes.height,'29.16mm');
+  // B5's narrowest two-column label still contains the full quiet zones.
+  const b5BarcodeCellMm=((182-14-3)/2)*.54-2*1.3;
+  assert.ok(parseFloat(tall.attributes.width)<b5BarcodeCellMm);
+  assert.ok(parseFloat(tall.attributes.height)+.8<30);
+  assert.ok(parseFloat(medium.attributes.height)+.8<20);
+  assert.equal(barcode.createBarcodeSvg(code).attributes.width,'37.29mm');
+  assert.equal(barcode.createBarcodeSvg(code).attributes.height,'26.73mm');
+  assert.equal(medium.attributes.viewBox,original.attributes.viewBox);
+  assert.equal(medium.children[1].attributes.x,original.children[1].attributes.x);
+  assert.ok(css.includes('height:var(--symbol-height,26.73mm)!important'));
+  assert.ok(css.includes('height:var(--symbol-height,17.82mm)!important'));
+  assert.ok(app.includes('printBarcodeMagnification(labelHeightMm,compact)'));
 });
 test('barcode SVG and legacy backup codes normalize Unicode digits, spaces, hyphens',()=>{
  const code='4901234567894',svg=barcode.createBarcodeSvg(code);
@@ -244,8 +271,8 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=69',scope).href,Buffer.from(app)],
-  [new URL('./style.css?v=69',scope).href,Buffer.from(css)],
+  [new URL('./app.js?v=70',scope).href,Buffer.from(app)],
+  [new URL('./style.css?v=70',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
  const fallback=new Map();
@@ -275,7 +302,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=69'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=70'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -287,14 +314,14 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=69','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=70','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=69',app],['style.css?v=69',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=70',app],['style.css?v=70',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
