@@ -162,7 +162,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v69'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v70'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
