@@ -90,7 +90,13 @@ function svgElem(name,attrs={}) {
   for (const [key,value] of Object.entries(attrs))element.setAttribute(key,String(value));
   return element;
 }
-function createBarcodeSvg(code,compact=false,miniature=false) {
+// For printed labels only: modest, proportional magnification where physical
+// space permits. Compact 5/10mm and 15mm remain at their existing dimensions.
+function printBarcodeMagnification(height,compact){
+  if(compact||height<20)return 1;
+  return height>=30?12/11:1.07;
+}
+function createBarcodeSvg(code,compact=false,miniature=false,magnification=1) {
   const info=codeInfo(code);
   if(!info.ok)throw Error(info.error);
   code=info.code;
@@ -98,9 +104,11 @@ function createBarcodeSvg(code,compact=false,miniature=false) {
   const qleft=isSmall?7:isUPC?9:11,qright=isUPC?9:7;
   const modules=qleft+bits.length+qright;
   const small=miniature||compact,barHeight=small?40:22.85/.33,viewHeight=compact?44:small?54:81;
+  const moduleWidth=.33*magnification;
   const svg=svgElem('svg',{xmlns:'http://www.w3.org/2000/svg',
-    viewBox:`0 0 ${modules} ${viewHeight}`,width:`${(modules*.33).toFixed(2)}mm`,
-    height:small?'17.82mm':'26.73mm',...(compact?{preserveAspectRatio:'none'}:{}),role:'img','aria-label':`バーコード ${code}`});
+    viewBox:`0 0 ${modules} ${viewHeight}`,width:`${(modules*moduleWidth).toFixed(2)}mm`,
+    height:`${((small?17.82:26.73)*magnification).toFixed(2)}mm`,
+    ...(compact?{preserveAspectRatio:'none'}:{}),role:'img','aria-label':`バーコード ${code}`});
   svg.append(svgElem('rect',{x:0,y:0,width:modules,height:viewHeight,fill:'#ffffff'}));
   let i=0;
   while(i<bits.length){
@@ -184,10 +192,12 @@ function createLabel({code,name,nameBreak},compact=false){
   }else span.textContent=text;
   nameCell.append(span);
   const barcodeCell=document.createElement('div');barcodeCell.className='barcode-cell';
-  const svg=createBarcodeSvg(code,compact,labelHeightMm<30);
+  const scale=printBarcodeMagnification(labelHeightMm,compact);
+  const svg=createBarcodeSvg(code,compact,labelHeightMm<30,scale);
   if(labelLayout==='vertical')svg.setAttribute('preserveAspectRatio','none');
   barcodeCell.style.setProperty('--barcode-width',svg.getAttribute('width'));
-  barcodeCell.style.setProperty('--symbol-height',compact?(labelHeightMm===5?'3.9mm':'8.5mm'):labelHeightMm<30?'17.82mm':'26.73mm');
+  barcodeCell.style.setProperty('--symbol-height',compact?(labelHeightMm===5?'3.9mm':'8.5mm')
+    :`${((labelHeightMm<30?17.82:26.73)*scale).toFixed(2)}mm`);
   barcodeCell.append(svg);
   body.append(nameCell,barcodeCell);
   container.append(body);
