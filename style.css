@@ -857,3 +857,11 @@ input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
   transform:translateX(2mm);
   max-width:calc(100% - 2mm)
 }
+
+/* Horizontal layouts only: slightly larger product name (13pt → 14pt).
+   Keep the 5mm/10mm print sizes, barcode geometry and vertical layout intact.
+   Both paper preview and printed output share the paper-page rule. */
+.paper-page:not([data-label-height="5"]):not([data-label-height="10"]) .product-label[data-layout="horizontal"] .name-cell,
+.preview-stage .product-label[data-layout="horizontal"] .name-cell{
+  font-size:14pt
+}
