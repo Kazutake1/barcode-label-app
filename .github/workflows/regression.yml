@@ -18,5 +18,7 @@ jobs:
           node --version
           node --check app.js
           node --check sw.js
+      - name: Output SHA-256 values for verified release manifest
+        run: sha256sum index.html app.js style.css
       - name: Run automated regression and security tests
         run: node --test tests/regression.test.mjs
