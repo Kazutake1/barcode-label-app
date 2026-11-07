@@ -1335,10 +1335,11 @@ async function printLabels(items){
 }
 function printPagination(paper,height,layout){
   const isB5=paper==='B5',columns=layout==='vertical'?3:2;
-  // Keep the existing vertical spacing and row limits on both paper sizes.
+  // Preserve paper margins, label heights and 3mm row gaps. Allow just one
+  // additional row where the physical sheet still fits it (15-25mm labels).
   const paperHeight=isB5?257:297,pagePadding=isB5?7:8,gap=3;
   const fitRows=Math.floor((paperHeight-2*pagePadding+gap)/(height+gap));
-  const rows=Math.max(1,height<15?fitRows:Math.min(isB5?7:8,fitRows));
+  const rows=Math.max(1,height<15?fitRows:Math.min(isB5?8:9,fitRows));
   return {columns,perPage:columns*rows};
 }
 function buildPrintSheets(){

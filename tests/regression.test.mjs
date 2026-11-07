@@ -162,7 +162,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v74'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v75'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
@@ -271,8 +271,8 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=74',scope).href,Buffer.from(app)],
-  [new URL('./style.css?v=74',scope).href,Buffer.from(css)],
+  [new URL('./app.js?v=75',scope).href,Buffer.from(app)],
+  [new URL('./style.css?v=75',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
  const fallback=new Map();
@@ -302,7 +302,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=74'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=75'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -314,14 +314,14 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=74','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=75','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=74',app],['style.css?v=74',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=75',app],['style.css?v=75',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
@@ -446,12 +446,31 @@ test('layout selector appears next to height in both print toolbars',()=>{
  assert.ok(css.includes('grid-template-rows:minmax(0,22fr) minmax(0,78fr)'));
 });
 
-test('vertical three-column sheets increase capacity without changing horizontal paging',()=>{
+test('extra printed row fits inside A4/B5 margins without changing row spacing or tall labels',()=>{
  const {printPagination}=compile(segment('function printPagination(','function buildPrintSheets('),'printPagination');
- assert.deepEqual(printPagination('A4',20,'horizontal'),{columns:2,perPage:16});
- assert.deepEqual(printPagination('A4',20,'vertical'),{columns:3,perPage:24});
- assert.deepEqual(printPagination('B5',20,'horizontal'),{columns:2,perPage:14});
- assert.deepEqual(printPagination('B5',20,'vertical'),{columns:3,perPage:21});
+ for(const [paper,paperHeight,padding,oldCap,newCap] of [
+   ['A4',297,8,8,9],['B5',257,7,7,8]
+ ]){
+   for(const height of [5,10,15,20,25,30,35,40,45,50]){
+     const horizontal=printPagination(paper,height,'horizontal');
+     const vertical=printPagination(paper,height,'vertical');
+     assert.equal(horizontal.columns,2);
+     assert.equal(vertical.columns,3);
+     const rows=horizontal.perPage/2;
+     assert.equal(vertical.perPage,rows*3);
+     assert.ok(Number.isInteger(rows)&&rows>=1);
+     const usedHeight=height*rows+3*(rows-1);
+     assert.ok(usedHeight<=paperHeight-2*padding,
+       paper+' at '+height+'mm exceeds printable sheet height');
+     if([15,20,25].includes(height))assert.equal(rows,newCap,
+       paper+' at '+height+'mm should add exactly one row');
+     if(height===30)assert.equal(rows,oldCap,'30mm layout must be unchanged');
+   }
+ }
+ assert.deepEqual(printPagination('A4',20,'horizontal'),{columns:2,perPage:18});
+ assert.deepEqual(printPagination('A4',20,'vertical'),{columns:3,perPage:27});
+ assert.deepEqual(printPagination('B5',20,'horizontal'),{columns:2,perPage:16});
+ assert.deepEqual(printPagination('B5',20,'vertical'),{columns:3,perPage:24});
  assert.deepEqual(printPagination('A4',5,'vertical'),{columns:3,perPage:105});
  assert.deepEqual(printPagination('B5',50,'vertical'),{columns:3,perPage:12});
 });
