@@ -162,7 +162,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v73'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v74'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
@@ -271,8 +271,8 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=73',scope).href,Buffer.from(app)],
-  [new URL('./style.css?v=73',scope).href,Buffer.from(css)],
+  [new URL('./app.js?v=74',scope).href,Buffer.from(app)],
+  [new URL('./style.css?v=74',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
  const fallback=new Map();
@@ -302,7 +302,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=73'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=74'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -314,14 +314,14 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=73','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=74','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=73',app],['style.css?v=73',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=74',app],['style.css?v=74',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
@@ -374,6 +374,37 @@ test('product edit and delete clicks remain available immediately after a drag',
   const dragged=click(true);capture.handler(dragged);
   assert.equal(dragged.defaultPrevented,true);
   assert.equal(dragged.stopped,true);
+});
+test('only the newly selected product action menu remains open',()=>{
+  const older={open:true},newer={open:false},closed={open:false};
+  const list={querySelectorAll:selector=>{
+    assert.equal(selector,'.product-menu[open]');
+    return [older,newer,closed].filter(menu=>menu.open);
+  }};
+  const {closeOtherProductMenus}=compile(
+    segment('function closeOtherProductMenus(','function shouldOpenProductMenuAbove('),
+    'closeOtherProductMenus',{$:selector=>{
+      assert.equal(selector,'#catalog-items');return list;
+    }});
+  // User opens B while A is already open: close A before B is toggled on.
+  closeOtherProductMenus(newer);
+  assert.equal(older.open,false);
+  assert.equal(newer.open,false);
+  newer.open=true;
+  // Keyboard/script opens A while B is already open.
+  older.open=true;
+  closeOtherProductMenus(older);
+  assert.equal(older.open,true);
+  assert.equal(newer.open,false);
+  // Clicking the current menu again should close it normally.
+  older.open=false;
+  closeOtherProductMenus(older);
+  assert.equal(older.open,false);
+  assert.equal(closed.open,false);
+  assert.ok(app.includes("trigger.addEventListener('click',()=>{"));
+  assert.ok(app.includes("if(!menu.open)closeOtherProductMenus(menu);"));
+  assert.ok(app.includes("menu.addEventListener('toggle',()=>{"));
+  assert.ok(app.includes("closeOtherProductMenus(menu);"));
 });
 test('product menu opens upward if the edit and delete options would be clipped',()=>{
   const {shouldOpenProductMenuAbove}=compile(
