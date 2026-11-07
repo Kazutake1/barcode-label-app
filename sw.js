@@ -1,19 +1,19 @@
 // A release activates only after every required response matches this manifest.
 // Camera decoder CDN script is never cached; its SRI stays in app.js.
 const CACHE_PREFIX='barcode-label-local:'+self.registration.scope+':';
-const CACHE=CACHE_PREFIX+'v72';
+const CACHE=CACHE_PREFIX+'v73';
 const CORE=[
   {
     "url": "./index.html",
-    "sha256": "edf2f06d44a4d2acc773ef387c731f15037ac61d1916c55e518c489fdacad599"
+    "sha256": "792aabdc1c9ca1338f54aacc0f31c79c907eb66b0bbed0650266556df788ae2b"
   },
   {
-    "url": "./app.js?v=72",
-    "sha256": "cb4377654cbf141c68b2b0efc06d527bb67cc443b5dd4c9b6d8c3b261349a653"
+    "url": "./app.js?v=73",
+    "sha256": "30c04a6e421c204b8014a9429be524db8140cf6145c983b626c076881b4dc5c5"
   },
   {
-    "url": "./style.css?v=72",
-    "sha256": "fd286138226515e2c5701cc67e9f745c6a99a390a223f54db7349577c62bb08f"
+    "url": "./style.css?v=73",
+    "sha256": "533d1e00e0bd3999a5f167e7f4c767b94a675f54021bdd42b58270b6cfa95d01"
   },
   {
     "url": "./manifest.webmanifest",
