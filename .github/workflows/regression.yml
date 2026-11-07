@@ -18,5 +18,7 @@ jobs:
           node --version
           node --check app.js
           node --check sw.js
+      - name: Output release file SHA-256 inputs for the verified cache
+        run: sha256sum index.html app.js style.css
       - name: Run automated regression and security tests
         run: node --test tests/regression.test.mjs
