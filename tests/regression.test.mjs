@@ -355,6 +355,7 @@ test('product edit and delete clicks remain available immediately after a drag',
     'installProductReordering',{
       $:()=>list,document:{addEventListener:()=>{}},
       window:{addEventListener:()=>{}},
+      clearProductGesture:()=>{},
       productSuppressClickUntil:Date.now()+5000
     });
   api.installProductReordering();
