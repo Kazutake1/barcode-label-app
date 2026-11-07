@@ -755,6 +755,13 @@ function installProductReordering(){
  });
 }
 
+// Only one saved-product action menu can be open at a time.
+// Closing an unrelated menu does not change its product or action state.
+function closeOtherProductMenus(activeMenu){
+  for(const other of $('#catalog-items').querySelectorAll('.product-menu[open]')){
+    if(other!==activeMenu)other.open=false;
+  }
+}
 function shouldOpenProductMenuAbove(rect,menuHeight,viewportHeight){
   const spaceBelow=Math.max(0,viewportHeight-rect.bottom);
   return spaceBelow<menuHeight+8&&rect.top>spaceBelow;
@@ -890,9 +897,16 @@ function renderCatalog(){
     });
     actions.append(add,edit,moveLabel,del);
     menu.append(trigger,actions);line.append(menu);
+    // Run before the summary's default toggle, so rapid successive taps always
+    // keep the most recently selected product menu open (also on iOS Safari).
+    trigger.addEventListener('click',()=>{
+      if(!menu.open)closeOtherProductMenus(menu);
+    });
     menu.addEventListener('toggle',()=>{
       row.classList.toggle('catalog-menu-open',menu.open);
       if(!menu.open){menu.classList.remove('open-up');return;}
+      // Also handle keyboard / script-initiated opens.
+      closeOtherProductMenus(menu);
       menu.classList.toggle('open-up',shouldOpenProductMenuAbove(
         trigger.getBoundingClientRect(),actions.offsetHeight,window.innerHeight));
     });
