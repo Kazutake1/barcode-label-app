@@ -162,7 +162,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v72'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v73'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
@@ -271,8 +271,8 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=72',scope).href,Buffer.from(app)],
-  [new URL('./style.css?v=72',scope).href,Buffer.from(css)],
+  [new URL('./app.js?v=73',scope).href,Buffer.from(app)],
+  [new URL('./style.css?v=73',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
  const fallback=new Map();
@@ -302,7 +302,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=72'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=73'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -314,14 +314,14 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=72','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=73','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=72',app],['style.css?v=72',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=73',app],['style.css?v=73',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
@@ -347,6 +347,44 @@ test('label layout defaults to horizontal and remembers only supported values',(
  }
  const unavailable=compile(source,'readLabelLayout',{LABEL_LAYOUT_KEY:'layout',localStorage:{getItem(){throw Error('blocked')}}});
  assert.equal(unavailable.readLabelLayout(),'horizontal');
+});
+test('product edit and delete clicks remain available immediately after a drag',()=>{
+  const listeners=[];
+  const list={addEventListener:(type,handler,capture)=>listeners.push({type,handler,capture})};
+  const api=compile(segment('function installProductReordering(){','function shouldOpenProductMenuAbove('),
+    'installProductReordering',{
+      $:()=>list,document:{addEventListener:()=>{}},
+      window:{addEventListener:()=>{}},
+      clearProductGesture:()=>{},
+      productSuppressClickUntil:Date.now()+5000
+    });
+  api.installProductReordering();
+  const capture=listeners.find(entry=>entry.type==='click'&&entry.capture===true);
+  assert.ok(capture,'drag guard is attached to capture phase');
+  function click(isSummary){
+    return {target:{closest:selector=>selector==='.catalog-summary'&&isSummary?{}:null},
+      defaultPrevented:false,stopped:false,
+      preventDefault(){this.defaultPrevented=true;},stopPropagation(){this.stopped=true;}};
+  }
+  for(const action of ['edit','delete','menu toggle','folder move']){
+    const event=click(false);capture.handler(event);
+    assert.equal(event.defaultPrevented,false,action);
+    assert.equal(event.stopped,false,action);
+  }
+  const dragged=click(true);capture.handler(dragged);
+  assert.equal(dragged.defaultPrevented,true);
+  assert.equal(dragged.stopped,true);
+});
+test('product menu opens upward if the edit and delete options would be clipped',()=>{
+  const {shouldOpenProductMenuAbove}=compile(
+    segment('function shouldOpenProductMenuAbove(','function renderCatalog(){'),
+    'shouldOpenProductMenuAbove');
+  assert.equal(shouldOpenProductMenuAbove({top:620,bottom:660},210,720),true);
+  assert.equal(shouldOpenProductMenuAbove({top:60,bottom:100},210,720),false);
+  assert.ok(app.includes("menu.addEventListener('toggle'"));
+  assert.ok(app.includes("row.classList.toggle('catalog-menu-open',menu.open)"));
+  assert.ok(css.includes('.catalog-item.catalog-menu-open{z-index:20}'));
+  assert.ok(css.includes('.product-menu.open-up .product-menu-options{top:auto;bottom:calc(100% + 2px)}'));
 });
 test('horizontal product name font grows from 13pt to 14pt without affecting vertical or miniature print',()=>{
   assert.ok(css.includes('.paper-page .product-label .name-cell{font-size:13pt;'));

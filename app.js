@@ -745,13 +745,20 @@ function installProductReordering(){
  window.addEventListener('blur',clearProductGesture);
  window.addEventListener('scroll',()=>{if(productGesture&&!productGesture.dragging)clearProductGesture();},{passive:true});
  list.addEventListener('click',e=>{
-   if(Date.now()<productSuppressClickUntil){e.preventDefault();e.stopPropagation();}
+   // Suppress the synthetic click on a dragged row, never the action buttons.
+   if(Date.now()<productSuppressClickUntil&&e.target.closest('.catalog-summary')){
+     e.preventDefault();e.stopPropagation();
+   }
  },true);
  list.addEventListener('contextmenu',e=>{
    if(canSortProducts()&&e.target.closest('.catalog-summary'))e.preventDefault();
  });
 }
 
+function shouldOpenProductMenuAbove(rect,menuHeight,viewportHeight){
+  const spaceBelow=Math.max(0,viewportHeight-rect.bottom);
+  return spaceBelow<menuHeight+8&&rect.top>spaceBelow;
+}
 function renderCatalog(){
   $('#catalog-count').textContent=catalog.length+'件';
   const term=$('#catalog-search').value.trim().toLocaleLowerCase();
@@ -883,6 +890,12 @@ function renderCatalog(){
     });
     actions.append(add,edit,moveLabel,del);
     menu.append(trigger,actions);line.append(menu);
+    menu.addEventListener('toggle',()=>{
+      row.classList.toggle('catalog-menu-open',menu.open);
+      if(!menu.open){menu.classList.remove('open-up');return;}
+      menu.classList.toggle('open-up',shouldOpenProductMenuAbove(
+        trigger.getBoundingClientRect(),actions.offsetHeight,window.innerHeight));
+    });
     // Display the same locally generated, valid barcode used on printed labels.
     // Keep it below the name, number, date and actions so narrow screens do not
     // compress the bars or displace the existing product controls.

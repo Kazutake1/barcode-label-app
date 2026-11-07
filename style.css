@@ -865,3 +865,8 @@ input[type="checkbox"]:disabled{cursor:not-allowed;opacity:.55}
 .preview-stage .product-label[data-layout="horizontal"] .name-cell{
   font-size:14pt
 }
+
+/* Keep an open product action menu above adjacent product rows.
+   Open it upward near the bottom of the screen to preserve Edit/Delete access. */
+.catalog-item.catalog-menu-open{z-index:20}
+.product-menu.open-up .product-menu-options{top:auto;bottom:calc(100% + 2px)}
