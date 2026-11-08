@@ -5,6 +5,7 @@ const CATALOG_KEY = 'barcode-label-catalog-v1';
 const FOLDERS_KEY = 'barcode-label-folders-v1';
 const DATA_KEY = 'barcode-label-data-v2';
 let storageReadError = false;
+let storageErrorReason = '';
 let storedSnapshot = readSnapshot();
 const LABEL_LAYOUT_KEY = 'barcode-label-print-layout-v1';
 const LABEL_HEIGHT_KEY = 'barcode-label-print-height-mm-v1';
@@ -260,7 +261,11 @@ function readSnapshot(){
     if(data?.version!==1||!Array.isArray(data.catalog)
       ||!Array.isArray(data.records)||!Array.isArray(data.folders))throw Error('snapshot');
     return data;
-  }catch{storageReadError=true;return null;}
+  }catch{
+    storageReadError=true;
+    storageErrorReason='保存データを正しく読み取れませんでした。';
+    return null;
+  }
 }
 function readStoredData(key){
   if(storageReadError)throw Error('保存データを読み取れません。元のデータを保護するため保存を停止しています。');
@@ -582,6 +587,83 @@ function readCatalog(){
       updatedAt:typeof x.updatedAt==='string'&&!Number.isNaN(Date.parse(x.updatedAt))?x.updatedAt:null
     }));
   }catch{return [];}
+}
+// Inspect the original collections before startup migration or any new save.
+// Invalid and duplicate records must never disappear silently on the next save.
+function validStoredItemId(id){
+  return typeof id==='string'?id.trim().length>0
+    :typeof id==='number'&&Number.isSafeInteger(id)&&id>0;
+}
+function checkSavedDataIntegrity(){
+  if(storageReadError)return storageErrorReason||'保存データを読み取れませんでした。';
+  try{
+    const readLegacy=key=>{
+      const value=localStorage.getItem(key);
+      return value===null?[]:JSON.parse(value);
+    };
+    const raw=storedSnapshot||{
+      catalog:readLegacy(CATALOG_KEY),records:readLegacy(STORE_KEY),
+      folders:readLegacy(FOLDERS_KEY)
+    };
+    if(!Array.isArray(raw.catalog)||!Array.isArray(raw.records)||!Array.isArray(raw.folders))
+      return '保存データの形式に異常があります。';
+    if(raw.catalog.length>500||raw.records.length>200||raw.folders.length>MAX_FOLDERS)
+      return '保存データの登録件数に異常があります。';
+
+    const folderIds=new Set(),folderNames=new Set();
+    for(const folder of raw.folders){
+      if(!folder||typeof folder!=='object'||Array.isArray(folder)||!validFolderId(folder.id))
+        return 'フォルダの管理番号に異常があります。';
+      let name;
+      try{name=validateFolderName(folder.name);}
+      catch{return 'フォルダ名に異常があります。';}
+      const key=name.toLocaleLowerCase('ja');
+      if(folderIds.has(folder.id)||folderNames.has(key))
+        return 'フォルダの管理番号または名前が重複しています。';
+      folderIds.add(folder.id);folderNames.add(key);
+    }
+
+    const validateIds=(items,label)=>{
+      const ids=new Set();
+      for(const item of items){
+        if(!item||typeof item!=='object'||Array.isArray(item)||!validStoredItemId(item.id))
+          return label+'に管理番号がない、または形式が不正な項目があります。';
+        const id=String(item.id);
+        if(ids.has(id))return label+'の管理番号が重複しています。';
+        ids.add(id);
+      }
+      return null;
+    };
+    const productIds=validateIds(raw.catalog,'保存商品');
+    if(productIds)return productIds;
+    const recordIds=validateIds(raw.records,'印刷リスト');
+    if(recordIds)return recordIds;
+
+    const codes=new Set();
+    for(const item of raw.catalog){
+      if(typeof item.name!=='string'||!item.name.trim()||item.name.length>80)
+        return '保存商品の商品名に異常があります。';
+      const info=codeInfo(item.code);
+      if(!info.ok)return '保存商品のバーコード番号に異常があります。';
+      if(codes.has(info.code))return '同じバーコード番号の商品が重複しています。';
+      codes.add(info.code);
+      if(item.folderId!=null&&!folderIds.has(item.folderId))
+        return '保存商品が存在しないフォルダを参照しています。';
+    }
+    for(const item of raw.records){
+      if(typeof item.name!=='string'||!item.name.trim()||item.name.length>80
+        ||!codeInfo(item.code).ok)
+        return '印刷リストの商品情報に異常があります。';
+      if(item.qty!==undefined&&(!Number.isInteger(Number(item.qty))
+        ||Number(item.qty)<1||Number(item.qty)>99))
+        return '印刷リストの枚数に異常があります。';
+      if(item.selected!==undefined&&typeof item.selected!=='boolean')
+        return '印刷リストの選択情報に異常があります。';
+    }
+    return null;
+  }catch{
+    return '保存データの一部が壊れているか、読み取りができません。';
+  }
 }
 function makeId(){return globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2);}
 function saveCatalog(){
@@ -991,7 +1073,47 @@ async function decryptBackup(envelope,password){
     return JSON.parse(new TextDecoder().decode(plain));
   }catch{throw Error('パスワードが違うか、バックアップが破損しています。');}
 }
+// Retain the exact source strings, even if JSON is damaged.
+// This local, unencrypted recovery file is intentionally NOT an app backup.
+async function exportProtectedRawData(){
+  if(!storageReadError)return;
+  if(!window.confirm('元の保存データを復旧用ファイルに退避します。ファイルは暗号化されず、商品情報を含みます。第三者に渡さず安全に保管してください。続けますか？'))return;
+  try{
+    const keys=[DATA_KEY,CATALOG_KEY,STORE_KEY,FOLDERS_KEY];
+    const raw={};
+    for(const key of keys)raw[key]=localStorage.getItem(key);
+    if(Object.values(raw).every(value=>value===null))throw Error('退避できる保存データがありません。');
+    const data={format:'barcode-label-app-protected-raw',version:1,
+      exportedAt:new Date().toISOString(),storage:raw};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const filename='barcode-label-recovery-raw.json';
+    if(typeof File!=='undefined'&&navigator.canShare&&navigator.share){
+      const file=new File([blob],filename,{type:'application/json'});
+      if(navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({files:[file],title:'バーコードラベル 元データの退避'});
+          toast('元データの共有操作を終了しました。保存先をご確認ください。');
+          return;
+        }catch(error){
+          if(error?.name==='AbortError')return;
+        }
+      }
+    }
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.href=url;link.download=filename;
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    toast('元データの保存を開始しました。保存先をご確認ください。');
+  }catch(error){
+    toast(error?.message||'元データをファイルに保存できませんでした。','error');
+  }
+}
 async function exportBackup(){
+  if(storageReadError){
+    backupStatus('データ保護中は通常のバックアップを作成できません。上の「元データを退避」をご使用ください。',true);
+    return;
+  }
   if(!catalog.length&&!records.length&&!folders.length){
     backupStatus('保存されている商品・印刷リストがありません。',true);return;
   }
@@ -1643,6 +1765,7 @@ $('#bulk-move').addEventListener('click',()=>{
   }catch(error){toast(error.message,'error');}
 });
 $('#backup-export').addEventListener('click',exportBackup);
+$('#storage-raw-backup').addEventListener('click',exportProtectedRawData);
 $('#backup-file').addEventListener('change',e=>restoreBackup(e.target.files?.[0]));
 window.addEventListener('hashchange',()=>showPage(window.location.hash==='#saved'?'saved':'create'));
 $('#clear-all').addEventListener('click',()=>{
@@ -1663,5 +1786,16 @@ $('#label-height').value=String(labelHeightMm);
 $('#preview-label-height').value=String(labelHeightMm);
 $('#label-layout').value=labelLayout;
 $('#preview-label-layout').value=labelLayout;
-if(storageReadError)toast('保存データを読み取れません。元のデータは変更せず保護しています。','error');
+const startupIntegrityProblem=checkSavedDataIntegrity();
+if(startupIntegrityProblem){
+  storageReadError=true;
+  storageErrorReason=startupIntegrityProblem;
+}
+if(storageReadError){
+  $('#storage-warning').hidden=false;
+  $('#storage-warning-message').textContent='保存データに異常を検出しました：'
+    +(storageErrorReason||'読み取りエラー')
+    +' 元データは変更せず保護しています。登録・編集・削除・復元は保存できません。'
+    +' データを消さずに「元データを退避」をご使用ください。';
+}
 migrateOldProducts();renderRecords();renderCatalog();updatePreview();showPage(window.location.hash==='#saved'?'saved':'create');
