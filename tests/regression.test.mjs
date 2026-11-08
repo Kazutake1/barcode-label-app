@@ -162,7 +162,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v75'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v76'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
@@ -178,7 +178,7 @@ function storageHarness({initial=null,legacy={},fail=false}={}){
   setItem(k,v){writes++;if(broken)throw Error('quota');disk.set(k,v);},
   removeItem(k){throw Error('unexpected delete '+k);}};
  const f=compile(`const DATA_KEY='snapshot',CATALOG_KEY='c',STORE_KEY='r',FOLDERS_KEY='f',MAX_FOLDERS=50;
- let storageReadError=false,storedSnapshot=readSnapshot();
+ let storageReadError=false,storageErrorReason='',storedSnapshot=readSnapshot();
  let catalog=storedSnapshot?.catalog??[],records=storedSnapshot?.records??[],folders=storedSnapshot?.folders??[];
  `+snapshotPart+mergePart,
  'persistState,readStoredData,mergeBackup,state:()=>({catalog,records,folders}),blocked:()=>storageReadError',
@@ -187,6 +187,76 @@ function storageHarness({initial=null,legacy={},fail=false}={}){
  return {...f,disk,writes:()=>writes,fail:value=>broken=value};
 }
 const samplePrint={code:'4901234567894',name:'商品',qty:1,selected:true,nameBreak:null};
+function inspectStoredCollections({catalog=[],records=[],folders=[]},legacy=null){
+ const storedSnapshot=legacy===null?{catalog,records,folders}:null;
+ const contents=legacy??{};
+ const {checkSavedDataIntegrity}=compile(
+  "const MAX_FOLDERS=50,MAX_FOLDER_NAME=30,DATA_KEY='snapshot',"+
+  "CATALOG_KEY='catalog',STORE_KEY='records',FOLDERS_KEY='folders';"+
+  segment('function validateFolderName(','function readFolders(){')+
+  segment('function validStoredItemId(','function makeId(){'),
+  'checkSavedDataIntegrity',{
+   codeInfo:barcode.codeInfo,storedSnapshot,storageReadError:false,storageErrorReason:'',
+   localStorage:{getItem:key=>contents[key]??null}
+  });
+ return checkSavedDataIntegrity();
+}
+function validSavedProduct(n){
+ const body=String(n).padStart(12,'0');
+ return {id:'product-'+n,code:body+barcode.checkDigit(body),
+  name:'商品'+n,folderId:'folder-1',createdAt:null,updatedAt:null};
+}
+test('startup inspection accepts 100 legitimate saved products and legacy collections',()=>{
+ const products=Array.from({length:100},(_,n)=>validSavedProduct(n));
+ const items=products.slice(0,10).map((p,n)=>({
+  id:'print-'+n,code:p.code,name:p.name,qty:1,selected:true
+ }));
+ const data={catalog:products,records:items,folders:[{id:'folder-1',name:'飲料'}]};
+ assert.equal(inspectStoredCollections(data),null);
+ assert.equal(inspectStoredCollections({},{
+  catalog:JSON.stringify(products),records:JSON.stringify(items),
+  folders:JSON.stringify(data.folders)
+ }),null);
+ assert.equal(inspectStoredCollections({},{}),null);
+});
+test('startup inspection identifies missing or duplicate IDs',()=>{
+ const p=validSavedProduct(1),q=validSavedProduct(2),folders=[{id:'folder-1',name:'飲料'}];
+ assert.match(inspectStoredCollections({catalog:[{...p,id:''}],folders}),/管理番号/);
+ assert.match(inspectStoredCollections({catalog:[p,{...q,id:p.id}],folders}),/重複/);
+ assert.match(inspectStoredCollections({catalog:[p],folders,
+  records:[{id:'same',code:p.code,name:p.name,qty:1},
+   {id:'same',code:q.code,name:q.name,qty:1}]}),/重複/);
+ assert.match(inspectStoredCollections({catalog:[p],folders,
+  records:[{code:p.code,name:p.name,qty:1}]}),/管理番号/);
+ assert.match(inspectStoredCollections({catalog:[p],folders:[...folders,folders[0]]}),/重複/);
+});
+test('startup inspection catches malformed items without silently deleting them',()=>{
+ const p=validSavedProduct(1),q=validSavedProduct(2),folders=[{id:'folder-1',name:'飲料'}];
+ assert.match(inspectStoredCollections({catalog:[{...p,code:'4901234567890'}],folders}),/バーコード/);
+ assert.match(inspectStoredCollections({catalog:[p,{...q,code:p.code}],folders}),/重複/);
+ assert.match(inspectStoredCollections({catalog:[{...p,folderId:'missing-folder'}],folders}),/フォルダ/);
+ assert.match(inspectStoredCollections({catalog:[p,{...q,name:''}],folders}),/商品名/);
+ assert.match(inspectStoredCollections({records:[{id:'r',code:p.code,name:'商品',qty:0}]}),/枚数/);
+ assert.match(inspectStoredCollections({}, {catalog:'{broken'}),/壊れている/);
+ assert.match(inspectStoredCollections({}, {catalog:'null'}),/形式/);
+});
+test('data protection blocks writes and keeps a raw recovery copy available',()=>{
+ let writes=0;
+ const blocked=compile(segment('function persistState(','function readRecords(){'),
+  'persistState',{storageReadError:true,DATA_KEY:'snapshot',storedSnapshot:null,
+   catalog:[],records:[],folders:[],localStorage:{setItem(){writes++;}}});
+ assert.throws(()=>blocked.persistState(),/保存/);
+ assert.equal(writes,0);
+ assert.ok(app.includes("const startupIntegrityProblem=checkSavedDataIntegrity();"));
+ assert.ok(app.indexOf("const startupIntegrityProblem=checkSavedDataIntegrity();")
+  <app.lastIndexOf("migrateOldProducts();"));
+ assert.ok(app.includes("format:'barcode-label-app-protected-raw'"));
+ assert.ok(app.includes("for(const key of keys)raw[key]=localStorage.getItem(key)"));
+ assert.ok(app.includes("backupStatus('データ保護中は通常のバックアップ"));
+ assert.ok(html.includes('id="storage-raw-backup"'));
+ assert.ok(html.includes('id="storage-warning"'));
+ assert.ok(css.includes('.storage-warning[hidden]{display:none!important}'));
+});
 test('products, print list and folders commit with exactly one write',()=>{
  const h=storageHarness({legacy:{c:'old-catalog',r:'old-records',f:'old-folders'}});
  const next={catalog:[{code:samplePrint.code}],records:[samplePrint],folders:[{id:'f1',name:'飲料'}]};
@@ -271,8 +341,8 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=75',scope).href,Buffer.from(app)],
-  [new URL('./style.css?v=75',scope).href,Buffer.from(css)],
+  [new URL('./app.js?v=76',scope).href,Buffer.from(app)],
+  [new URL('./style.css?v=76',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
  const fallback=new Map();
@@ -302,7 +372,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=75'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=76'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -314,14 +384,14 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=75','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=76','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=75',app],['style.css?v=75',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=76',app],['style.css?v=76',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
