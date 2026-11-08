@@ -235,6 +235,7 @@ test('startup inspection catches malformed items without silently deleting them'
  assert.match(inspectStoredCollections({catalog:[{...p,code:'4901234567890'}],folders}),/バーコード/);
  assert.match(inspectStoredCollections({catalog:[p,{...q,code:p.code}],folders}),/重複/);
  assert.match(inspectStoredCollections({catalog:[{...p,folderId:'missing-folder'}],folders}),/フォルダ/);
+ assert.match(inspectStoredCollections({catalog:[{...p,createdAt:'bad-date'}],folders}),/登録日時/);
  assert.match(inspectStoredCollections({catalog:[p,{...q,name:''}],folders}),/商品名/);
  assert.match(inspectStoredCollections({records:[{id:'r',code:p.code,name:'商品',qty:0}]}),/枚数/);
  assert.match(inspectStoredCollections({}, {catalog:'{broken'}),/壊れている/);
