@@ -649,6 +649,9 @@ function checkSavedDataIntegrity(){
       codes.add(info.code);
       if(item.folderId!=null&&!folderIds.has(item.folderId))
         return '保存商品が存在しないフォルダを参照しています。';
+      if(['createdAt','updatedAt'].some(key=>item[key]!=null
+        &&(typeof item[key]!=='string'||Number.isNaN(Date.parse(item[key])))))
+        return '保存商品の登録日時に異常があります。';
     }
     for(const item of raw.records){
       if(typeof item.name!=='string'||!item.name.trim()||item.name.length>80
