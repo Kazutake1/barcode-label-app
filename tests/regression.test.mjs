@@ -656,7 +656,7 @@ test('printed cutting guides are cloned into preview without touching label boxe
    append(item){this.children.push(item);}
  })};
  const {appendPrintCutGuides}=compile(
-   segment('function appendPrintCutGuides(','function buildPrintSheets('),
+   segment('function printCutGuideGeometry(','function buildPrintSheets('),
    'appendPrintCutGuides',{document});
  const page={append(item){children.push(item);}};
  appendPrintCutGuides(page,1,2,20);
