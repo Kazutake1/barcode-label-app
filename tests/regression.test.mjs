@@ -162,7 +162,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v77'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v78'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
@@ -342,8 +342,8 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=77',scope).href,Buffer.from(app)],
-  [new URL('./style.css?v=76',scope).href,Buffer.from(css)],
+  [new URL('./app.js?v=78',scope).href,Buffer.from(app)],
+  [new URL('./style.css?v=78',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
  const fallback=new Map();
@@ -373,7 +373,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=77'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=78'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -385,14 +385,14 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=77','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=78','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=77',app],['style.css?v=76',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=78',app],['style.css?v=78',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
@@ -615,4 +615,66 @@ test('Safari print transfer exports and restores settings after the print list i
  assert.equal(merges,2);
  assert.deepEqual(applied,[]);
  assert.equal($('#paper').value,'A4');
+});
+
+test('thin cutting guides stay in 3mm gutters across label heights and layouts',()=>{
+ const {printCutGuideGeometry}=compile(
+   segment('function printCutGuideGeometry(','function appendPrintCutGuides('),
+   'printCutGuideGeometry');
+ for(const columns of [2,3]){
+   for(const height of [5,10,15,20,25,30,35,40,45,50]){
+     for(const count of [1,2,3,4,5,7,16,24,35]){
+       const geometry=printCutGuideGeometry(count,columns,height);
+       const rows=Math.ceil(count/columns);
+       assert.equal(geometry.heightMm,rows*height+Math.max(0,rows-1)*3);
+       assert.equal(geometry.horizontals.length,Math.max(0,rows-1));
+       assert.equal(geometry.verticals.length,Math.min(columns-1,Math.max(0,count-1)));
+       for(let index=0;index<geometry.horizontals.length;index++){
+         const line=geometry.horizontals[index];
+         assert.equal(line,(index+1)*(height+3)-1.5);
+         const lastRowBottom=(index+1)*height+index*3;
+         assert.equal(line-lastRowBottom,1.5);
+       }
+       for(const paperWidth of [194,168]){
+         const columnWidth=(paperWidth-3*(columns-1))/columns;
+         for(let index=0;index<geometry.verticals.length;index++){
+           const guide=geometry.verticals[index],column=index+1;
+           const left=paperWidth*guide.percent/100+guide.offsetMm;
+           const previousLabelEnd=column*columnWidth+(column-1)*3;
+           assert.ok(Math.abs(left-previousLabelEnd-1.5)<1e-9);
+         }
+       }
+     }
+   }
+ }
+});
+test('printed cutting guides are cloned into preview without touching label boxes',()=>{
+ const children=[];
+ const document={createElement:tag=>({
+   tag,className:'',attributes:{},style:{},children:[],
+   setAttribute(key,value){this.attributes[key]=value;},
+   append(item){this.children.push(item);}
+ })};
+ const {appendPrintCutGuides}=compile(
+   segment('function appendPrintCutGuides(','function buildPrintSheets('),
+   'appendPrintCutGuides',{document});
+ const page={append(item){children.push(item);}};
+ appendPrintCutGuides(page,1,2,20);
+ assert.equal(children.length,0,'single label needs no separating guide');
+ appendPrintCutGuides(page,5,2,20);
+ assert.equal(children.length,1);
+ assert.equal(children[0].className,'paper-cut-guides');
+ assert.equal(children[0].attributes['aria-hidden'],'true');
+ assert.equal(children[0].style.height,'66mm');
+ assert.deepEqual(children[0].children.map(x=>x.className),
+   ['paper-cut-line horizontal','paper-cut-line horizontal','paper-cut-line vertical']);
+ assert.equal(children[0].children[0].style.top,'21.5mm');
+ assert.equal(children[0].children[2].style.left,'calc(50% + 0mm)');
+ assert.match(app,/appendPrintCutGuides\(page,pageItems.length,columns,labelHeightMm\);/);
+ assert.ok(app.indexOf('appendPrintCutGuides(page,pageItems.length,columns,labelHeightMm);')
+   <app.indexOf('viewport.append(page.cloneNode(true));'));
+ assert.match(css,/\.paper-cut-line\.horizontal\{[^}]*border-top:\.1mm solid #d6d6d6/);
+ assert.match(css,/\.paper-cut-line\.vertical\{[^}]*border-left:\.1mm solid #d6d6d6/);
+ assert.ok(css.includes('grid-auto-rows:var(--label-height,20mm);gap:3mm'));
+ assert.ok(css.includes('.paper-page .product-label{width:100%;max-width:none;'));
 });
