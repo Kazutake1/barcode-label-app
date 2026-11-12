@@ -1483,6 +1483,42 @@ function printPagination(paper,height,layout){
   const rows=Math.max(1,height<15?fitRows:Math.min(isB5?8:9,fitRows));
   return {columns,perPage:columns*rows};
 }
+// Positions are in the middle of the existing 3mm gutters. They never
+// change the size or position of a printed barcode or product name.
+function printCutGuideGeometry(count,columns,heightMm){
+  const gap=3,rows=Math.ceil(count/columns);
+  return {
+    heightMm:rows*heightMm+Math.max(0,rows-1)*gap,
+    horizontals:Array.from({length:Math.max(0,rows-1)},
+      (_,index)=>(index+1)*(heightMm+gap)-gap/2),
+    verticals:Array.from({length:Math.min(columns-1,Math.max(0,count-1))},
+      (_,index)=>{
+        const column=index+1;
+        return {percent:column*100/columns,offsetMm:(column/columns-.5)*gap};
+      })
+  };
+}
+function appendPrintCutGuides(page,count,columns,heightMm){
+  const geometry=printCutGuideGeometry(count,columns,heightMm);
+  if(!geometry.horizontals.length&&!geometry.verticals.length)return;
+  const guides=document.createElement('div');
+  guides.className='paper-cut-guides';
+  guides.setAttribute('aria-hidden','true');
+  guides.style.height=geometry.heightMm+'mm';
+  for(const topMm of geometry.horizontals){
+    const line=document.createElement('span');
+    line.className='paper-cut-line horizontal';
+    line.style.top=topMm+'mm';
+    guides.append(line);
+  }
+  for(const {percent,offsetMm} of geometry.verticals){
+    const line=document.createElement('span');
+    line.className='paper-cut-line vertical';
+    line.style.left=`calc(${percent}% + ${offsetMm}mm)`;
+    guides.append(line);
+  }
+  page.append(guides);
+}
 function buildPrintSheets(){
   const paper=$('#paper').value;
   const isB5=paper==='B5';
@@ -1504,8 +1540,10 @@ function buildPrintSheets(){
     page.dataset.labelHeight=String(labelHeightMm);
     const grid=document.createElement('div');
     grid.className='paper-label-grid';
-    for(const item of flat.slice(offset,offset+perPage))grid.append(createLabel(item,labelHeightMm<=10));
+    const pageItems=flat.slice(offset,offset+perPage);
+    for(const item of pageItems)grid.append(createLabel(item,labelHeightMm<=10));
     page.append(grid);
+    appendPrintCutGuides(page,pageItems.length,columns,labelHeightMm);
     target.append(page);
 
     const viewport=document.createElement('div');
