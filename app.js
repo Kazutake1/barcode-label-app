@@ -1264,15 +1264,30 @@ async function restoreBackup(file){
     }
     $('#backup-password').value='';
     const parsed=validateBackupDocument(raw);
+    const settings=raw.printTransferSettings;
+    if(settings!==undefined&&(
+      !settings||typeof settings!=='object'||Array.isArray(settings)
+      ||(settings.paper!=='A4'&&settings.paper!=='B5')
+      ||typeof settings.labelHeightMm!=='number'||!validLabelHeight(settings.labelHeightMm)
+      ||!validLabelLayout(settings.layout)
+    )){
+      throw Error('印刷データの用紙・高さ・配置の設定が正しくありません。');
+    }
     if(!parsed.products.length&&!parsed.printItems.length&&!parsed.folders.length){
       backupStatus('バックアップには商品情報が入っていません。',true);return;
     }
     const proposed=parsed.products.filter(x=>!catalog.some(current=>current.code===x.code)).length;
     const answer=window.confirm(
-      `保存商品：${parsed.products.length}件（うち未登録 ${proposed}件）\nフォルダ：${parsed.folders.length}個\n印刷リスト：${parsed.printItems.length}件\n\n既存データを残して追加します。\n同じバーコード番号の商品は上書きしません。印刷リストで番号・商品名・枚数が同じ項目は、選択状態と改行位置を復元します。\n\n復元しますか？`
+      `保存商品：${parsed.products.length}件（うち未登録 ${proposed}件）\nフォルダ：${parsed.folders.length}個\n印刷リスト：${parsed.printItems.length}件\n\n既存データを残して追加します。\n同じバーコード番号の商品は上書きしません。印刷リストで番号・商品名・枚数が同じ項目は、選択状態と改行位置を復元します。${settings?'\n印刷データの用紙・高さ・配置も反映します。':''}\n\n復元しますか？`
     );
     if(!answer){backupStatus('復元をキャンセルしました。');return;}
     const result=mergeBackup(parsed);
+    if(settings){
+      $('#paper').value=settings.paper;
+      $('#preview-paper').value=settings.paper;
+      setLabelHeight(settings.labelHeightMm);
+      setLabelLayout(settings.layout);
+    }
     backupStatus(`復元完了：新規フォルダ${result.folders}個、商品${result.saved}件、印刷リスト${result.print}件を追加し、印刷リスト${result.updatedPrint}件の選択・改行を復元しました。重複商品${result.skipped}件は変更していません。`);
     clearForm();
   }catch(error){
@@ -1367,6 +1382,7 @@ async function exportPrintTransfer(){
   const exported={
     format:BACKUP_FORMAT,version:BACKUP_VERSION,exportedAt:new Date().toISOString(),
     folders:[],savedProducts:[],
+    printTransferSettings:{paper:$('#paper').value,labelHeightMm,layout:labelLayout},
     printList:stagedPrintItems.map(item=>({
       code:item.code,name:item.name,nameBreak:item.nameBreak??null,
       qty:item.qty,selected:true

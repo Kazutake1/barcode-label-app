@@ -162,7 +162,7 @@ test('large JSON is bounded and product barcodes are lazily drawn',()=>{
  assert.ok(app.includes('if(catalogBarcodeObserver)catalogBarcodeObserver.observe(barcode)'));
 });
 test('service worker caches a complete verified release without forcing activation',()=>{
- assert.ok(sw.includes("CACHE_PREFIX+'v76'"));
+ assert.ok(sw.includes("CACHE_PREFIX+'v77'"));
  assert.ok(sw.includes("new URL(req.url).origin!==self.location.origin"));
  assert.ok(!/self\.(skipWaiting|clients\.claim)\(/.test(sw));
  assert.ok(sw.includes("crypto.subtle.digest('SHA-256'"));
@@ -342,7 +342,7 @@ function workerHarness({badUrl=null,status=200}={}){
  const listeners={},cacheEntries=new Map(),requests=[],scope='https://example.test/barcode/';
  const contents=new Map([
   [new URL('./index.html',scope).href,Buffer.from(html)],
-  [new URL('./app.js?v=76',scope).href,Buffer.from(app)],
+  [new URL('./app.js?v=77',scope).href,Buffer.from(app)],
   [new URL('./style.css?v=76',scope).href,Buffer.from(css)],
  ]);
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
@@ -373,7 +373,7 @@ function workerHarness({badUrl=null,status=200}={}){
  return {install,request,cacheEntries,requests,scope};
 }
 test('release installation rejects mismatched files before caching anything',async()=>{
- const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=76'});
+ const h=workerHarness({badUrl:'https://example.test/barcode/app.js?v=77'});
  await assert.rejects(h.install(),/mismatch/);
  assert.equal(h.cacheEntries.size,0);
 });
@@ -385,14 +385,14 @@ test('navigation and assets use the same cached release without network fetches'
  const h=workerHarness();await h.install();const before=h.requests.length;
  const response=await h.request(h.scope);
  assert.equal(await response.text(),html);
- const asset=await h.request(h.scope+'app.js?v=76','no-cors');
+ const asset=await h.request(h.scope+'app.js?v=77','no-cors');
  assert.equal(await asset.text(),app);
  assert.equal(h.requests.length,before);
  assert.equal(await h.request('https://unpkg.com/scanner.js','no-cors'),null);
 });
 test('SW manifest digests match the source files',()=>{
  const manifest=JSON.parse(sw.match(/const CORE=(\[[\s\S]*?\]);/)[1]);
- for(const [path,text] of [['index.html',html],['app.js?v=76',app],['style.css?v=76',css]]){
+ for(const [path,text] of [['index.html',html],['app.js?v=77',app],['style.css?v=76',css]]){
   const entry=manifest.find(x=>x.url==='./'+path);
   assert.equal(entry.sha256,createHash('sha256').update(text).digest('hex'));
  }
@@ -544,4 +544,75 @@ test('extra printed row fits inside A4/B5 margins without changing row spacing o
  assert.deepEqual(printPagination('B5',20,'vertical'),{columns:3,perPage:24});
  assert.deepEqual(printPagination('A4',5,'vertical'),{columns:3,perPage:105});
  assert.deepEqual(printPagination('B5',50,'vertical'),{columns:3,perPage:12});
+});
+
+test('Safari print transfer exports and restores settings after the print list is merged',async()=>{
+ const elements=new Map();
+ const $=selector=>{
+  if(!elements.has(selector))elements.set(selector,{value:'',textContent:''});
+  return elements.get(selector);
+ };
+ $('#paper').value='B5';
+ let fileBlob;
+ const {exportPrintTransfer}=compile(
+  'const BACKUP_FORMAT="barcode-label-app-backup", BACKUP_VERSION=1;'+
+  segment('async function exportPrintTransfer()','function printFeedback('),
+  'exportPrintTransfer',{
+   $,stagedPrintItems:[{code:'4901234567894',name:'商品',qty:2}],
+   labelHeightMm:35,labelLayout:'vertical',Blob,File:undefined,navigator:{},
+   URL:{createObjectURL(blob){fileBlob=blob;return 'blob:test';}},
+   document:{createElement:()=>({click(){},remove(){}}),body:{append(){}}},
+   setTimeout(){}
+  });
+ await exportPrintTransfer();
+ const exported=JSON.parse(await fileBlob.text());
+ assert.deepEqual(exported.printTransferSettings,{paper:'B5',labelHeightMm:35,layout:'vertical'});
+ assert.equal(exported.printList[0].qty,2);
+
+ const validators=compile(segment('function validLabelHeight(','function readLabelHeight(')+
+  segment('function validLabelLayout(','function readLabelLayout('),'validLabelHeight,validLabelLayout');
+ let proceed=true,failMerge=false,merges=0,applied=[];
+ const {restoreBackup}=compile(segment('async function restoreBackup(','function saveRecords('),'restoreBackup',{
+  $,BACKUP_FILE_LIMIT:2*1024*1024,ENCRYPTED_BACKUP_FORMAT:'encrypted',catalog:[],
+  validateBackupDocument:backup.validateBackupDocument,
+  ...validators,
+  window:{confirm:()=>proceed},
+  mergeBackup(parsed){
+   assert.equal(parsed.printItems[0].qty,2);
+   if(failMerge)throw Error('保存に失敗');
+   merges++;
+   return {folders:0,saved:0,print:0,updatedPrint:0,skipped:0};
+  },
+  setLabelHeight:height=>applied.push(['height',height]),
+  setLabelLayout:layout=>applied.push(['layout',layout]),
+  backupStatus(){},clearForm(){}
+ });
+ const restore=payload=>restoreBackup({name:'transfer.json',size:100,text:async()=>JSON.stringify(payload)});
+ $('#paper').value='A4';
+ await restore(exported);
+ assert.equal(merges,1);
+ assert.equal($('#paper').value,'B5');
+ assert.equal($('#preview-paper').value,'B5');
+ assert.deepEqual(applied,[['height',35],['layout','vertical']]);
+
+ applied=[];
+ $('#paper').value='A4';
+ const {printTransferSettings,...legacy}=exported;
+ await restore(legacy);
+ assert.equal(merges,2);
+ assert.deepEqual(applied,[]);
+ assert.equal($('#paper').value,'A4');
+
+ proceed=false;
+ await restore(exported);
+ proceed=true;
+ failMerge=true;
+ await restore(exported);
+ failMerge=false;
+ for(const invalid of [{paper:'Letter'},{labelHeightMm:7},{layout:'diagonal'}]){
+  await restore({...exported,printTransferSettings:{...printTransferSettings,...invalid}});
+ }
+ assert.equal(merges,2);
+ assert.deepEqual(applied,[]);
+ assert.equal($('#paper').value,'A4');
 });
